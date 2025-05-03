@@ -50,6 +50,7 @@ import { getInitials } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+// Define the schema for the casting form
 const castingFormSchema = z.object({
   theme: z.string().min(1, { message: "Theme is required" }),
   numberOfPeople: z.number().min(1, { message: "Number of people must be at least 1" }),
@@ -60,9 +61,12 @@ const castingFormSchema = z.object({
   selectedSubscribers: z.array(z.string())
 });
 
+// Extract the inferred type from the schema
+type CastingFormValues = z.infer<typeof castingFormSchema>;
+
 interface CastingFormProps {
   initialData?: Casting;
-  onSubmit: (data: z.infer<typeof castingFormSchema>) => void;
+  onSubmit: (data: CastingFormValues) => void;
   onCancel: () => void;
 }
 
@@ -398,14 +402,26 @@ const CastingsPage: React.FC = () => {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
-  const handleAddCasting = (data: z.infer<typeof castingFormSchema>) => {
-    addCasting(data);
+  const handleAddCasting = (data: CastingFormValues) => {
+    // Ensure all required properties are present
+    const newCasting: Omit<Casting, "id" | "createdAt"> = {
+      theme: data.theme,
+      numberOfPeople: data.numberOfPeople,
+      openingDate: data.openingDate,
+      closingDate: data.closingDate,
+      recordingDate: data.recordingDate,
+      postingDate: data.postingDate,
+      selectedSubscribers: data.selectedSubscribers,
+    };
+    
+    addCasting(newCasting);
     setIsFormOpen(false);
   };
 
-  const handleEditCasting = (data: z.infer<typeof castingFormSchema>) => {
+  const handleEditCasting = (data: CastingFormValues) => {
     if (castingToEdit) {
-      updateCasting(castingToEdit.id, data);
+      // For updates, we need to cast to Partial<Casting> since some fields might be undefined
+      updateCasting(castingToEdit.id, data as Partial<Casting>);
       setCastingToEdit(null);
     }
   };
