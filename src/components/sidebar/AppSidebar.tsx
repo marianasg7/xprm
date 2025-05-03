@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Home, Users, BarChart3, Settings, User } from "lucide-react";
+import { Home, Users, BarChart3, Settings, User, Cast } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -30,6 +30,11 @@ const menuItems = [
     title: "Non-Subscribers",
     icon: User,
     path: "/non-subscribers",
+  },
+  {
+    title: "Castings",
+    icon: Cast,
+    path: "/castings",
   },
   {
     title: "Analytics",

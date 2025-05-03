@@ -8,6 +8,7 @@ import SubscribersPage from "@/pages/Subscribers";
 import NonSubscribersPage from "@/pages/NonSubscribers";
 import AnalyticsPage from "@/pages/Analytics";
 import SettingsPage from "@/pages/Settings";
+import CastingsPage from "@/pages/Castings";
 
 export default function Index() {
   return (
@@ -21,7 +22,10 @@ export default function Index() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/subscribers" element={<SubscribersPage />} />
+                <Route path="/subscribers/:id" element={<SubscribersPage />} />
                 <Route path="/non-subscribers" element={<NonSubscribersPage />} />
+                <Route path="/non-subscribers/:id" element={<NonSubscribersPage />} />
+                <Route path="/castings" element={<CastingsPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

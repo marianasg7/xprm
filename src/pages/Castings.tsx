@@ -1,639 +1,578 @@
 
-import React, { useState } from "react";
-import { useSubscribers } from "@/context/SubscriberContext";
-import { Casting, Subscriber } from "@/types/types";
-import { format } from "date-fns";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Calendar, Cast, PlusCircle, Search, Trash2, Edit, Users, Check, X } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getInitials } from "@/lib/utils";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import React, { useState } from 'react';
+import { useSubscribers } from '@/context/SubscriberContext';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Casting, Subscriber } from '@/types/types';
+import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon, Cast } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-// Define the schema for the casting form
-const castingFormSchema = z.object({
-  theme: z.string().min(1, { message: "Theme is required" }),
-  numberOfPeople: z.number().min(1, { message: "Number of people must be at least 1" }),
-  openingDate: z.date(),
-  closingDate: z.date(),
-  recordingDate: z.date(),
-  postingDate: z.date(),
-  selectedSubscribers: z.array(z.string())
-});
-
-// Extract the inferred type from the schema
-type CastingFormValues = z.infer<typeof castingFormSchema>;
-
-interface CastingFormProps {
-  initialData?: Casting;
-  onSubmit: (data: CastingFormValues) => void;
-  onCancel: () => void;
-}
-
-const CastingForm: React.FC<CastingFormProps> = ({ initialData, onSubmit, onCancel }) => {
-  const { subscribers } = useSubscribers();
-  const isEditing = !!initialData;
+export default function CastingsPage() {
+  const { castings, subscribers, addCasting, updateCasting, deleteCasting, addSubscriberToCasting, removeSubscriberFromCasting } = useSubscribers();
   
-  // Filter only active subscribers who are interested in casting
-  const eligibleSubscribers = subscribers.filter(
-    sub => sub.status === "active" && sub.interestedInCasting
-  );
-
-  const form = useForm<z.infer<typeof castingFormSchema>>({
-    resolver: zodResolver(castingFormSchema),
-    defaultValues: initialData
-      ? {
-          ...initialData,
-          openingDate: new Date(initialData.openingDate),
-          closingDate: new Date(initialData.closingDate),
-          recordingDate: new Date(initialData.recordingDate),
-          postingDate: new Date(initialData.postingDate),
-          selectedSubscribers: initialData.selectedSubscribers || [],
-        }
-      : {
-          theme: "",
-          numberOfPeople: 1,
-          openingDate: new Date(),
-          closingDate: new Date(new Date().setDate(new Date().getDate() + 7)),
-          recordingDate: new Date(new Date().setDate(new Date().getDate() + 14)),
-          postingDate: new Date(new Date().setDate(new Date().getDate() + 21)),
-          selectedSubscribers: [],
-        },
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isParticipantsDialogOpen, setIsParticipantsDialogOpen] = useState(false);
+  const [currentCasting, setCurrentCasting] = useState<Casting | null>(null);
+  
+  const [formData, setFormData] = useState({
+    theme: '',
+    numberOfPeople: 1,
+    openingDate: new Date(),
+    closingDate: new Date(),
+    recordingDate: new Date(),
+    postingDate: new Date(),
+    selectedSubscribers: [] as string[]
   });
   
-  const selectedSubscriberIds = form.watch("selectedSubscribers");
+  // Filter subscribers who are interested in casting and active
+  const eligibleSubscribers = subscribers.filter(sub => 
+    sub.status === 'active' && sub.interestedInCasting
+  );
+  
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'numberOfPeople' ? parseInt(value) : value
+    }));
+  };
+  
+  const handleAddCasting = () => {
+    // Make sure all required fields are present
+    addCasting({
+      theme: formData.theme,
+      numberOfPeople: formData.numberOfPeople,
+      openingDate: formData.openingDate,
+      closingDate: formData.closingDate,
+      recordingDate: formData.recordingDate,
+      postingDate: formData.postingDate,
+      selectedSubscribers: []
+    });
+    
+    setFormData({
+      theme: '',
+      numberOfPeople: 1,
+      openingDate: new Date(),
+      closingDate: new Date(),
+      recordingDate: new Date(),
+      postingDate: new Date(),
+      selectedSubscribers: []
+    });
+    setIsAddDialogOpen(false);
+  };
+  
+  const handleEditCasting = () => {
+    if (currentCasting) {
+      updateCasting(currentCasting.id, {
+        theme: formData.theme,
+        numberOfPeople: formData.numberOfPeople,
+        openingDate: formData.openingDate,
+        closingDate: formData.closingDate,
+        recordingDate: formData.recordingDate,
+        postingDate: formData.postingDate
+      });
+      setCurrentCasting(null);
+      setIsEditDialogOpen(false);
+    }
+  };
+  
+  const openEditDialog = (casting: Casting) => {
+    setCurrentCasting(casting);
+    setFormData({
+      theme: casting.theme,
+      numberOfPeople: casting.numberOfPeople,
+      openingDate: casting.openingDate,
+      closingDate: casting.closingDate,
+      recordingDate: casting.recordingDate,
+      postingDate: casting.postingDate,
+      selectedSubscribers: casting.selectedSubscribers
+    });
+    setIsEditDialogOpen(true);
+  };
+  
+  const openParticipantsDialog = (casting: Casting) => {
+    setCurrentCasting(casting);
+    setFormData(prev => ({
+      ...prev,
+      selectedSubscribers: casting.selectedSubscribers
+    }));
+    setIsParticipantsDialogOpen(true);
+  };
+  
+  const handleToggleParticipant = (subscriberId: string) => {
+    if (!currentCasting) return;
+    
+    if (currentCasting.selectedSubscribers.includes(subscriberId)) {
+      removeSubscriberFromCasting(currentCasting.id, subscriberId);
+    } else {
+      addSubscriberToCasting(currentCasting.id, subscriberId);
+    }
+    
+    // Update the current casting with the latest data
+    const updatedCasting = castings.find(c => c.id === currentCasting.id);
+    if (updatedCasting) {
+      setCurrentCasting(updatedCasting);
+    }
+  };
   
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="space-y-4">
-          <FormField
-            control={form.control}
-            name="theme"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Theme</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter casting theme" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="numberOfPeople"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Number of People</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={1}
-                    placeholder="Enter number of people"
-                    {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Date fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="openingDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Opening Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                          <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="closingDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Closing Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                          <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="recordingDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Recording Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                          <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="postingDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Posting Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                          <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <FormLabel>Select Participants</FormLabel>
-            <FormDescription>
-              Select subscribers who will participate in this casting
-              ({selectedSubscriberIds.length}/{form.getValues().numberOfPeople} selected)
-            </FormDescription>
-            
-            <Card>
-              <CardContent className="p-2">
-                <ScrollArea className="h-[200px] pr-4">
-                  {eligibleSubscribers.length > 0 ? (
-                    <div className="space-y-2">
-                      {eligibleSubscribers.map((sub) => {
-                        const isSelected = selectedSubscriberIds.includes(sub.id);
-                        const isDisabled = !isSelected && 
-                          selectedSubscriberIds.length >= form.getValues().numberOfPeople;
-                        
-                        return (
-                          <div key={sub.id} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50">
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={(checked) => {
-                                const currentSelected = [...selectedSubscriberIds];
-                                
-                                if (checked) {
-                                  if (currentSelected.length < form.getValues().numberOfPeople) {
-                                    form.setValue("selectedSubscribers", [...currentSelected, sub.id]);
-                                  }
-                                } else {
-                                  form.setValue(
-                                    "selectedSubscribers",
-                                    currentSelected.filter((id) => id !== sub.id)
-                                  );
-                                }
-                              }}
-                              disabled={isDisabled && !isSelected}
-                              id={`subscriber-${sub.id}`}
-                            />
-                            <div className="flex items-center justify-between w-full">
-                              <div className="flex items-center">
-                                <Avatar className="h-8 w-8 mr-2">
-                                  <AvatarFallback className="bg-primary text-white text-xs">
-                                    {getInitials(sub.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="text-sm font-medium">{sub.name}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {sub.email}
-                                  </p>
-                                </div>
-                              </div>
-                              {isSelected && (
-                                <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Selected
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-muted-foreground">
-                        No eligible subscribers found
-                      </p>
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-            
-            <FormMessage>
-              {selectedSubscriberIds.length > form.getValues().numberOfPeople && 
-                "You have selected more subscribers than the number of people required"}
-            </FormMessage>
-          </div>
-        </div>
-
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={
-            selectedSubscriberIds.length > form.getValues().numberOfPeople
-          }>
-            {isEditing ? "Update Casting" : "Create Casting"}
-          </Button>
-        </div>
-      </form>
-    </Form>
-  );
-};
-
-const CastingsPage: React.FC = () => {
-  const { castings, subscribers, addCasting, updateCasting, deleteCasting } = useSubscribers();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [castingToEdit, setCastingToEdit] = useState<Casting | null>(null);
-  const [castingToDelete, setCastingToDelete] = useState<string | null>(null);
-
-  // Filter castings based on search query
-  const filteredCastings = castings.filter((casting) =>
-    casting.theme.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Sort castings by creation date, newest first
-  const sortedCastings = [...filteredCastings].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-
-  const handleAddCasting = (data: CastingFormValues) => {
-    // Ensure all required properties are present
-    const newCasting: Omit<Casting, "id" | "createdAt"> = {
-      theme: data.theme,
-      numberOfPeople: data.numberOfPeople,
-      openingDate: data.openingDate,
-      closingDate: data.closingDate,
-      recordingDate: data.recordingDate,
-      postingDate: data.postingDate,
-      selectedSubscribers: data.selectedSubscribers,
-    };
-    
-    addCasting(newCasting);
-    setIsFormOpen(false);
-  };
-
-  const handleEditCasting = (data: CastingFormValues) => {
-    if (castingToEdit) {
-      // For updates, we need to cast to Partial<Casting> since some fields might be undefined
-      updateCasting(castingToEdit.id, data as Partial<Casting>);
-      setCastingToEdit(null);
-    }
-  };
-
-  const handleOpenDeleteDialog = (id: string) => {
-    setCastingToDelete(id);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (castingToDelete) {
-      deleteCasting(castingToDelete);
-      setCastingToDelete(null);
-      setIsDeleteDialogOpen(false);
-    }
-  };
-
-  // Helper function to get subscriber names from IDs
-  const getParticipantNames = (participantIds: string[]): string[] => {
-    return participantIds.map(id => {
-      const participant = subscribers.find(sub => sub.id === id);
-      return participant ? participant.name : 'Unknown';
-    });
-  };
-
-  return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Casting Opportunities</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage casting opportunities and participant selection
-        </p>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search castings..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Casting
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Castings</h1>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          Add New Casting
         </Button>
       </div>
-
-      {sortedCastings.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {sortedCastings.map((casting) => {
-            const participantNames = getParticipantNames(casting.selectedSubscribers);
-            
-            return (
-              <Card key={casting.id} className="overflow-hidden">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="font-bold">
-                        <Cast className="h-5 w-5 inline mr-2" />
-                        {casting.theme}
-                      </CardTitle>
-                      <CardDescription>
-                        {casting.selectedSubscribers.length}/{casting.numberOfPeople} participants selected
-                      </CardDescription>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setCastingToEdit(casting)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleOpenDeleteDialog(casting.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2 pb-3">
-                  <div className="grid grid-cols-2 gap-y-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Opening:</span>
-                      <span className="ml-2 font-medium">
-                        {format(new Date(casting.openingDate), "dd MMM yyyy")}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Closing:</span>
-                      <span className="ml-2 font-medium">
-                        {format(new Date(casting.closingDate), "dd MMM yyyy")}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Recording:</span>
-                      <span className="ml-2 font-medium">
-                        {format(new Date(casting.recordingDate), "dd MMM yyyy")}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Posting:</span>
-                      <span className="ml-2 font-medium">
-                        {format(new Date(casting.postingDate), "dd MMM yyyy")}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="pt-2">
-                    <h4 className="text-sm font-medium mb-2 flex items-center">
-                      <Users className="h-4 w-4 mr-1" />
-                      Participants
-                    </h4>
-                    
-                    {participantNames.length > 0 ? (
-                      <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto">
-                        {participantNames.map((name, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {name}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No participants selected yet</p>
-                    )}
-                  </div>
-                </CardContent>
-                <CardFooter className="bg-muted/40 pt-3 pb-3 text-xs text-muted-foreground">
-                  Created {format(new Date(casting.createdAt), "dd MMM yyyy")}
-                </CardFooter>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
+      
+      {castings.length === 0 ? (
         <div className="text-center py-10">
-          <div className="space-y-3">
-            <Cast className="h-12 w-12 mx-auto text-muted-foreground/70" />
-            <h3 className="text-lg font-medium">No casting opportunities</h3>
-            <p className="text-muted-foreground">
-              Get started by creating your first casting opportunity
-            </p>
-            <Button onClick={() => setIsFormOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Casting
+          <Cast className="mx-auto h-12 w-12 text-gray-400" />
+          <h2 className="mt-2 text-lg font-medium">No castings yet</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Start by creating a new casting opportunity.
+          </p>
+          <div className="mt-6">
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              Add New Casting
             </Button>
           </div>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {castings.map((casting) => (
+            <Card key={casting.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-xl">{casting.theme}</CardTitle>
+                  <Badge>{casting.selectedSubscribers.length}/{casting.numberOfPeople}</Badge>
+                </div>
+                <CardDescription>
+                  Created on {format(new Date(casting.createdAt), 'MMM d, yyyy')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Opening:</span>
+                    <span>{format(new Date(casting.openingDate), 'MMM d, yyyy')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Closing:</span>
+                    <span>{format(new Date(casting.closingDate), 'MMM d, yyyy')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Recording:</span>
+                    <span>{format(new Date(casting.recordingDate), 'MMM d, yyyy')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Posting:</span>
+                    <span>{format(new Date(casting.postingDate), 'MMM d, yyyy')}</span>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button variant="outline" size="sm" onClick={() => openParticipantsDialog(casting)}>
+                  Manage Participants
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => openEditDialog(casting)}>
+                  Edit
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       )}
-
-      {/* Add/Edit Casting Modal */}
-      <Dialog
-        open={isFormOpen || !!castingToEdit}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsFormOpen(false);
-            setCastingToEdit(null);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      
+      {/* Add Casting Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
-            <DialogTitle>
-              {castingToEdit ? "Edit Casting" : "Add New Casting"}
-            </DialogTitle>
+            <DialogTitle>Add New Casting</DialogTitle>
+            <DialogDescription>
+              Create a new casting opportunity for your subscribers.
+            </DialogDescription>
           </DialogHeader>
-          <CastingForm
-            initialData={castingToEdit || undefined}
-            onSubmit={castingToEdit ? handleEditCasting : handleAddCasting}
-            onCancel={() => {
-              setIsFormOpen(false);
-              setCastingToEdit(null);
-            }}
-          />
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="theme" className="text-right">
+                Theme
+              </Label>
+              <Input
+                id="theme"
+                name="theme"
+                value={formData.theme}
+                onChange={handleFormChange}
+                className="col-span-3"
+                placeholder="Summer Beach Shoot"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="numberOfPeople" className="text-right">
+                People
+              </Label>
+              <Input
+                id="numberOfPeople"
+                name="numberOfPeople"
+                type="number"
+                min="1"
+                value={formData.numberOfPeople}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            
+            {/* Opening Date */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="openingDate" className="text-right">
+                Opening
+              </Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.openingDate ? format(formData.openingDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.openingDate}
+                      onSelect={(date) => setFormData(prev => ({ ...prev, openingDate: date || new Date() }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            
+            {/* Closing Date */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="closingDate" className="text-right">
+                Closing
+              </Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.closingDate ? format(formData.closingDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.closingDate}
+                      onSelect={(date) => setFormData(prev => ({ ...prev, closingDate: date || new Date() }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            
+            {/* Recording Date */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="recordingDate" className="text-right">
+                Recording
+              </Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.recordingDate ? format(formData.recordingDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.recordingDate}
+                      onSelect={(date) => setFormData(prev => ({ ...prev, recordingDate: date || new Date() }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            
+            {/* Posting Date */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="postingDate" className="text-right">
+                Posting
+              </Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.postingDate ? format(formData.postingDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.postingDate}
+                      onSelect={(date) => setFormData(prev => ({ ...prev, postingDate: date || new Date() }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddCasting}>Create Casting</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              casting opportunity and remove all participant selections.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground"
+      
+      {/* Edit Casting Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Edit Casting</DialogTitle>
+            <DialogDescription>
+              Update the details of this casting opportunity.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-theme" className="text-right">
+                Theme
+              </Label>
+              <Input
+                id="edit-theme"
+                name="theme"
+                value={formData.theme}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-numberOfPeople" className="text-right">
+                People
+              </Label>
+              <Input
+                id="edit-numberOfPeople"
+                name="numberOfPeople"
+                type="number"
+                min="1"
+                value={formData.numberOfPeople}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            
+            {/* Same date pickers as the Add dialog */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-openingDate" className="text-right">
+                Opening
+              </Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.openingDate ? format(formData.openingDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.openingDate}
+                      onSelect={(date) => setFormData(prev => ({ ...prev, openingDate: date || new Date() }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            
+            {/* Similar date pickers for other dates */}
+            {/* Closing Date */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Closing</Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.closingDate ? format(formData.closingDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.closingDate}
+                      onSelect={(date) => setFormData(prev => ({ ...prev, closingDate: date || new Date() }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            
+            {/* Recording Date */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Recording</Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.recordingDate ? format(formData.recordingDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.recordingDate}
+                      onSelect={(date) => setFormData(prev => ({ ...prev, recordingDate: date || new Date() }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            
+            {/* Posting Date */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Posting</Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.postingDate ? format(formData.postingDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.postingDate}
+                      onSelect={(date) => setFormData(prev => ({ ...prev, postingDate: date || new Date() }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="destructive" 
+              onClick={() => {
+                if (currentCasting) {
+                  deleteCasting(currentCasting.id);
+                  setCurrentCasting(null);
+                  setIsEditDialogOpen(false);
+                }
+              }}
             >
               Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+            <div className="flex-1"></div>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditCasting}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Participants Dialog */}
+      <Dialog 
+        open={isParticipantsDialogOpen} 
+        onOpenChange={setIsParticipantsDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Participants</DialogTitle>
+            <DialogDescription>
+              Select subscribers for this casting opportunity.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <h3 className="font-medium mb-2">Eligible Subscribers</h3>
+            {eligibleSubscribers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No subscribers are currently interested in casting opportunities.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {eligibleSubscribers.map((subscriber) => {
+                  const isSelected = currentCasting?.selectedSubscribers.includes(subscriber.id) || false;
+                  
+                  return (
+                    <div 
+                      key={subscriber.id}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-md border",
+                        isSelected ? "bg-primary-light border-primary" : "bg-white"
+                      )}
+                    >
+                      <div>
+                        <p className="font-medium">{subscriber.name}</p>
+                        <p className="text-sm text-muted-foreground">{subscriber.email}</p>
+                      </div>
+                      <Button
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleToggleParticipant(subscriber.id)}
+                      >
+                        {isSelected ? "Selected" : "Select"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setIsParticipantsDialogOpen(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
-
-export default CastingsPage;
+}
