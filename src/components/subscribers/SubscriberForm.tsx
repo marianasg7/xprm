@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
@@ -52,6 +52,7 @@ const formSchema = z.object({
       name: z.string(),
     })
   ),
+  isUnsubscribed: z.boolean().default(false),
   status: z.enum(["active", "inactive"]),
   endSubscriptionDate: z.date().optional(),
 });
@@ -79,6 +80,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
           endSubscriptionDate: initialData.endSubscriptionDate
             ? new Date(initialData.endSubscriptionDate)
             : undefined,
+          isUnsubscribed: initialData.status === "inactive",
         }
       : {
           name: "",
@@ -92,12 +94,19 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
           plan: "Basic",
           planDuration: 1,
           tags: [],
+          isUnsubscribed: false,
           status: "active",
         },
   });
 
   const selectedTags = form.watch("tags") || [];
-  const status = form.watch("status");
+  const isUnsubscribed = form.watch("isUnsubscribed");
+
+  // Update status when isUnsubscribed changes
+  React.useEffect(() => {
+    const newStatus = isUnsubscribed ? "inactive" : "active";
+    form.setValue("status", newStatus);
+  }, [isUnsubscribed, form]);
 
   const handleAddNewTag = (name: string): Tag => {
     return addTag(name);
@@ -253,6 +262,23 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
               )}
             />
 
+            {/* Unsubscribed Checkbox */}
+            <FormField
+              control={form.control}
+              name="isUnsubscribed"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-end space-x-2 space-y-0 rounded-md p-4 border">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormLabel className="mb-0">Unsubscribed</FormLabel>
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="plan"
@@ -307,32 +333,8 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Unsubscribed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {status === "inactive" && (
+            {/* Show Unsubscribe Date field only when the checkbox is checked */}
+            {isUnsubscribed && (
               <FormField
                 control={form.control}
                 name="endSubscriptionDate"
@@ -384,7 +386,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
                 <FormControl>
                   <TagInput
                     existingTags={tags}
-                    selectedTags={selectedTags}
+                    selectedTags={selectedTags as Tag[]}
                     onTagsChange={field.onChange}
                     onAddNewTag={handleAddNewTag}
                     placeholder="Add tags..."
