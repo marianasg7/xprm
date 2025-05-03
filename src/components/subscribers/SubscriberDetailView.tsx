@@ -344,7 +344,8 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
 
   // Determine which tabs to show based on subscriber status
   const showRecoveryTab = safeSubscriber.status === "inactive";
-  const showCastingTab = safeSubscriber.interestedInCasting;
+  // Only show casting tab if subscriber is active AND interested in casting
+  const showCastingTab = safeSubscriber.status === "active" && safeSubscriber.interestedInCasting;
   
   // Determine default tab based on subscriber status
   let defaultTab = "details";
@@ -383,7 +384,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 >
                   {safeSubscriber.status === "active" ? "Active" : "Unsubscribed"}
                 </Badge>
-                {safeSubscriber.interestedInCasting && (
+                {safeSubscriber.interestedInCasting && safeSubscriber.status === "active" && (
                   <Badge className="mt-2 bg-orange-500" variant="outline">
                     <Cast className="h-3 w-3 mr-1" /> Casting Interest
                   </Badge>
@@ -444,7 +445,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
 
             <div className="md:w-2/3">
               <Tabs defaultValue={defaultTab} className="w-full">
-                <TabsList className={`grid grid-cols-${showRecoveryTab ? (showCastingTab ? '3' : '2') : (showCastingTab ? '2' : '2')}`}>
+                <TabsList className="grid grid-cols-3">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   {showCastingTab && (
                     <TabsTrigger value="casting">Casting</TabsTrigger>
