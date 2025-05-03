@@ -1,12 +1,13 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { Subscriber, Tag, RecoveryNote, Attachment, SubscriberStatus } from '@/types/types';
+import { Subscriber, Tag, RecoveryNote, Attachment, SubscriberStatus, Casting } from '@/types/types';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 
 interface SubscriberContextType {
   subscribers: Subscriber[];
   tags: Tag[];
+  castings: Casting[];
   addSubscriber: (subscriber: Omit<Subscriber, 'id' | 'createdAt'>) => void;
   updateSubscriber: (id: string, subscriber: Partial<Subscriber>) => void;
   deleteSubscriber: (id: string) => void;
@@ -19,6 +20,11 @@ interface SubscriberContextType {
   addAttachment: (subscriberId: string, attachment: Omit<Attachment, 'id' | 'createdAt'>) => void;
   deleteAttachment: (subscriberId: string, attachmentId: string) => void;
   unsubscribe: (id: string, date: Date) => void;
+  addCasting: (casting: Omit<Casting, 'id' | 'createdAt'>) => void;
+  updateCasting: (id: string, casting: Partial<Casting>) => void;
+  deleteCasting: (id: string) => void;
+  addSubscriberToCasting: (castingId: string, subscriberId: string) => void;
+  removeSubscriberFromCasting: (castingId: string, subscriberId: string) => void;
 }
 
 const defaultTags: Tag[] = [
@@ -68,6 +74,7 @@ const generateMockSubscribers = (): Subscriber[] => {
       status,
       plan: plans[Math.floor(Math.random() * plans.length)],
       planDuration: [1, 3, 6, 12][Math.floor(Math.random() * 4)],
+      interestedInCasting: Math.random() > 0.5,
       tags: subscriberTags,
       recoveryNotes: status === 'inactive' ? [
         {
@@ -77,7 +84,38 @@ const generateMockSubscribers = (): Subscriber[] => {
         }
       ] : [],
       attachments: [],
+      castingParticipations: [],
       createdAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000),
+    };
+  });
+};
+
+// Generate mock casting opportunities
+const generateMockCastings = (): Casting[] => {
+  return Array(3).fill(null).map((_, index) => {
+    const today = new Date();
+    const openingDate = new Date(today);
+    openingDate.setDate(today.getDate() - Math.floor(Math.random() * 10));
+    
+    const closingDate = new Date(openingDate);
+    closingDate.setDate(openingDate.getDate() + Math.floor(Math.random() * 10) + 5);
+    
+    const recordingDate = new Date(closingDate);
+    recordingDate.setDate(closingDate.getDate() + Math.floor(Math.random() * 14) + 7);
+    
+    const postingDate = new Date(recordingDate);
+    postingDate.setDate(recordingDate.getDate() + Math.floor(Math.random() * 14) + 7);
+    
+    return {
+      id: nanoid(),
+      theme: ['Outdoor Adventure', 'Beach Party', 'Fantasy Roleplay', 'Lingerie Collection'][Math.floor(Math.random() * 4)],
+      numberOfPeople: Math.floor(Math.random() * 5) + 1,
+      openingDate,
+      closingDate,
+      recordingDate,
+      postingDate,
+      selectedSubscribers: [],
+      createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
     };
   });
 };
@@ -85,6 +123,7 @@ const generateMockSubscribers = (): Subscriber[] => {
 export const SubscriberContext = createContext<SubscriberContextType>({
   subscribers: [],
   tags: [],
+  castings: [],
   addSubscriber: () => {},
   updateSubscriber: () => {},
   deleteSubscriber: () => {},
@@ -97,11 +136,17 @@ export const SubscriberContext = createContext<SubscriberContextType>({
   addAttachment: () => {},
   deleteAttachment: () => {},
   unsubscribe: () => {},
+  addCasting: () => {},
+  updateCasting: () => {},
+  deleteCasting: () => {},
+  addSubscriberToCasting: () => {},
+  removeSubscriberFromCasting: () => {},
 });
 
 export const SubscriberProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [subscribers, setSubscribers] = useState<Subscriber[]>(generateMockSubscribers());
   const [tags, setTags] = useState<Tag[]>(defaultTags);
+  const [castings, setCastings] = useState<Casting[]>(generateMockCastings());
   const { toast } = useToast();
 
   const addSubscriber = (subscriber: Omit<Subscriber, 'id' | 'createdAt'>) => {
@@ -128,6 +173,15 @@ export const SubscriberProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteSubscriber = (id: string) => {
+    // Remove subscriber from all castings first
+    setCastings(prev => 
+      prev.map(casting => ({
+        ...casting,
+        selectedSubscribers: casting.selectedSubscribers.filter(subId => subId !== id)
+      }))
+    );
+    
+    // Then delete the subscriber
     setSubscribers(prev => prev.filter(sub => sub.id !== id));
     toast({
       title: "Subscriber deleted",
@@ -260,11 +314,119 @@ export const SubscriberProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
+  // Casting related functions
+  const addCasting = (casting: Omit<Casting, 'id' | 'createdAt'>) => {
+    const newCasting: Casting = {
+      ...casting,
+      id: nanoid(),
+      createdAt: new Date(),
+    };
+    setCastings(prev => [newCasting, ...prev]);
+    toast({
+      title: "Casting added",
+      description: `${casting.theme} casting has been created successfully.`,
+    });
+  };
+
+  const updateCasting = (id: string, updatedFields: Partial<Casting>) => {
+    setCastings(prev =>
+      prev.map(cast => (cast.id === id ? { ...cast, ...updatedFields } : cast))
+    );
+    toast({
+      title: "Casting updated",
+      description: "The casting has been updated successfully.",
+    });
+  };
+
+  const deleteCasting = (id: string) => {
+    // Remove casting reference from all subscribers
+    setSubscribers(prev =>
+      prev.map(sub => ({
+        ...sub,
+        castingParticipations: sub.castingParticipations.filter(castId => castId !== id)
+      }))
+    );
+    
+    // Delete the casting
+    setCastings(prev => prev.filter(cast => cast.id !== id));
+    toast({
+      title: "Casting deleted",
+      description: "The casting has been deleted successfully.",
+    });
+  };
+
+  const addSubscriberToCasting = (castingId: string, subscriberId: string) => {
+    // Add subscriber to casting
+    setCastings(prev =>
+      prev.map(cast =>
+        cast.id === castingId 
+          ? { 
+              ...cast, 
+              selectedSubscribers: cast.selectedSubscribers.includes(subscriberId) 
+                ? cast.selectedSubscribers 
+                : [...cast.selectedSubscribers, subscriberId] 
+            }
+          : cast
+      )
+    );
+    
+    // Add casting to subscriber's participations
+    setSubscribers(prev =>
+      prev.map(sub =>
+        sub.id === subscriberId
+          ? { 
+              ...sub, 
+              castingParticipations: sub.castingParticipations.includes(castingId)
+                ? sub.castingParticipations
+                : [...sub.castingParticipations, castingId]
+            }
+          : sub
+      )
+    );
+    
+    toast({
+      title: "Subscriber added to casting",
+      description: "The subscriber has been added to the casting successfully.",
+    });
+  };
+
+  const removeSubscriberFromCasting = (castingId: string, subscriberId: string) => {
+    // Remove subscriber from casting
+    setCastings(prev =>
+      prev.map(cast =>
+        cast.id === castingId
+          ? {
+              ...cast,
+              selectedSubscribers: cast.selectedSubscribers.filter(id => id !== subscriberId)
+            }
+          : cast
+      )
+    );
+    
+    // Remove casting from subscriber's participations
+    setSubscribers(prev =>
+      prev.map(sub =>
+        sub.id === subscriberId
+          ? {
+              ...sub,
+              castingParticipations: sub.castingParticipations.filter(id => id !== castingId)
+            }
+          : sub
+      )
+    );
+    
+    toast({
+      title: "Subscriber removed from casting",
+      description: "The subscriber has been removed from the casting successfully.",
+    });
+  };
+
   return (
     <SubscriberContext.Provider
       value={{
         subscribers,
         tags,
+        castings,
         addSubscriber,
         updateSubscriber,
         deleteSubscriber,
@@ -277,6 +439,11 @@ export const SubscriberProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addAttachment,
         deleteAttachment,
         unsubscribe,
+        addCasting,
+        updateCasting,
+        deleteCasting,
+        addSubscriberToCasting,
+        removeSubscriberFromCasting
       }}
     >
       {children}

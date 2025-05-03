@@ -34,8 +34,22 @@ export interface Subscriber {
   status: SubscriberStatus;
   plan: string;
   planDuration: number;
+  interestedInCasting: boolean;
   tags: Tag[];
   recoveryNotes: RecoveryNote[];
   attachments: Attachment[];
+  castingParticipations: string[]; // IDs of castings the subscriber is selected for
+  createdAt: Date;
+}
+
+export interface Casting {
+  id: string;
+  theme: string;
+  numberOfPeople: number;
+  openingDate: Date;
+  closingDate: Date;
+  recordingDate: Date;
+  postingDate: Date;
+  selectedSubscribers: string[]; // IDs of selected subscribers
   createdAt: Date;
 }

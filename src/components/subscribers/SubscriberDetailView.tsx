@@ -9,6 +9,7 @@ import {
   Paperclip,
   X,
   Calendar,
+  Cast,
 } from "lucide-react";
 import { Subscriber, RecoveryNote } from "@/types/types";
 import { Button } from "@/components/ui/button";
@@ -270,6 +271,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   onDelete,
 }) => {
   const {
+    castings,
     addRecoveryNote,
     updateRecoveryNote,
     deleteRecoveryNote,
@@ -290,7 +292,14 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     tags: subscriber.tags || [],
     recoveryNotes: subscriber.recoveryNotes || [],
     attachments: subscriber.attachments || [],
+    castingParticipations: subscriber.castingParticipations || [],
+    interestedInCasting: subscriber.interestedInCasting || false,
   };
+
+  // Get all castings this subscriber is participating in
+  const subscriberCastings = castings.filter(casting => 
+    casting.selectedSubscribers.includes(subscriber.id)
+  );
 
   const handleAddNote = (data: { content: string }) => {
     addRecoveryNote(subscriber.id, data.content);
@@ -333,6 +342,18 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     setIsEditNoteDialogOpen(true);
   };
 
+  // Determine which tabs to show based on subscriber status
+  const showRecoveryTab = safeSubscriber.status === "inactive";
+  const showCastingTab = safeSubscriber.interestedInCasting;
+  
+  // Determine default tab based on subscriber status
+  let defaultTab = "details";
+  if (showCastingTab) {
+    defaultTab = "casting";
+  } else if (showRecoveryTab) {
+    defaultTab = "recovery";
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -362,6 +383,11 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 >
                   {safeSubscriber.status === "active" ? "Active" : "Unsubscribed"}
                 </Badge>
+                {safeSubscriber.interestedInCasting && (
+                  <Badge className="mt-2 bg-orange-500" variant="outline">
+                    <Cast className="h-3 w-3 mr-1" /> Casting Interest
+                  </Badge>
+                )}
               </div>
 
               <Card className="mt-4">
@@ -417,10 +443,15 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
             </div>
 
             <div className="md:w-2/3">
-              <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid grid-cols-3">
+              <Tabs defaultValue={defaultTab} className="w-full">
+                <TabsList className={`grid grid-cols-${showRecoveryTab ? (showCastingTab ? '3' : '2') : (showCastingTab ? '2' : '2')}`}>
                   <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="recovery">Recovery Plan</TabsTrigger>
+                  {showCastingTab && (
+                    <TabsTrigger value="casting">Casting</TabsTrigger>
+                  )}
+                  {showRecoveryTab && (
+                    <TabsTrigger value="recovery">Recovery Plan</TabsTrigger>
+                  )}
                   <TabsTrigger value="attachments">Attachments</TabsTrigger>
                 </TabsList>
 
@@ -486,75 +517,138 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                   </div>
                 </TabsContent>
 
-                <TabsContent value="recovery" className="mt-4">
-                  <Card>
-                    <CardHeader className="pb-2 flex flex-row justify-between items-center">
-                      <div>
-                        <CardTitle className="text-lg">Recovery Plan</CardTitle>
+                {showCastingTab && (
+                  <TabsContent value="casting" className="mt-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Casting Opportunities</CardTitle>
                         <CardDescription>
-                          Notes for recovering this subscriber
+                          Casting opportunities this subscriber is participating in
                         </CardDescription>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsAddNoteDialogOpen(true)}
-                      >
-                        <PlusCircle className="h-4 w-4 mr-1" />
-                        Add Note
-                      </Button>
-                    </CardHeader>
-                    <CardContent>
-                      {safeSubscriber.recoveryNotes.length > 0 ? (
-                        <div className="space-y-4">
-                          {safeSubscriber.recoveryNotes.map((note) => (
-                            <Card key={note.id}>
-                              <CardContent className="p-4">
-                                <div className="flex justify-between items-start">
-                                  <p className="whitespace-pre-wrap">
-                                    {note.content}
-                                  </p>
-                                  <div className="flex space-x-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => openEditNoteModal(note)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeleteNote(note.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                      </CardHeader>
+                      <CardContent>
+                        {subscriberCastings.length > 0 ? (
+                          <div className="space-y-4">
+                            {subscriberCastings.map((casting) => (
+                              <Card key={casting.id}>
+                                <CardContent className="p-4">
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <h3 className="text-lg font-medium">{casting.theme}</h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                      <div>
+                                        <span className="text-muted-foreground">Number of people:</span>
+                                        <span className="ml-2">{casting.numberOfPeople}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">Opening:</span>
+                                        <span className="ml-2">{formatDate(casting.openingDate)}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">Closing:</span>
+                                        <span className="ml-2">{formatDate(casting.closingDate)}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">Recording:</span>
+                                        <span className="ml-2">{formatDate(casting.recordingDate)}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">Posting:</span>
+                                        <span className="ml-2">{formatDate(casting.postingDate)}</span>
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-2">
-                                  {formatTimeAgo(note.createdAt)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6">
+                            <p className="text-muted-foreground">
+                              No casting opportunities yet
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              This subscriber will appear in the casting selection pool
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )}
+
+                {showRecoveryTab && (
+                  <TabsContent value="recovery" className="mt-4">
+                    <Card>
+                      <CardHeader className="pb-2 flex flex-row justify-between items-center">
+                        <div>
+                          <CardTitle className="text-lg">Recovery Plan</CardTitle>
+                          <CardDescription>
+                            Notes for recovering this subscriber
+                          </CardDescription>
                         </div>
-                      ) : (
-                        <div className="text-center py-6">
-                          <p className="text-muted-foreground">
-                            No recovery notes yet
-                          </p>
-                          <Button
-                            variant="outline"
-                            className="mt-2"
-                            onClick={() => setIsAddNoteDialogOpen(true)}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add First Note
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                        <Button
+                          size="sm"
+                          onClick={() => setIsAddNoteDialogOpen(true)}
+                        >
+                          <PlusCircle className="h-4 w-4 mr-1" />
+                          Add Note
+                        </Button>
+                      </CardHeader>
+                      <CardContent>
+                        {safeSubscriber.recoveryNotes.length > 0 ? (
+                          <div className="space-y-4">
+                            {safeSubscriber.recoveryNotes.map((note) => (
+                              <Card key={note.id}>
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start">
+                                    <p className="whitespace-pre-wrap">
+                                      {note.content}
+                                    </p>
+                                    <div className="flex space-x-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => openEditNoteModal(note)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleDeleteNote(note.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-2">
+                                    {formatTimeAgo(note.createdAt)}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6">
+                            <p className="text-muted-foreground">
+                              No recovery notes yet
+                            </p>
+                            <Button
+                              variant="outline"
+                              className="mt-2"
+                              onClick={() => setIsAddNoteDialogOpen(true)}
+                            >
+                              <PlusCircle className="h-4 w-4 mr-2" />
+                              Add First Note
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )}
 
                 <TabsContent value="attachments" className="mt-4">
                   <Card>

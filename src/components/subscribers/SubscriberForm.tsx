@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,6 +54,7 @@ const formSchema = z.object({
     })
   ),
   isUnsubscribed: z.boolean().default(false),
+  interestedInCasting: z.boolean().default(false),
   status: z.enum(["active", "inactive"]),
   endSubscriptionDate: z.date().optional(),
 });
@@ -81,6 +83,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
             ? new Date(initialData.endSubscriptionDate)
             : undefined,
           isUnsubscribed: initialData.status === "inactive",
+          interestedInCasting: initialData.interestedInCasting || false,
         }
       : {
           name: "",
@@ -95,6 +98,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
           planDuration: 1,
           tags: [],
           isUnsubscribed: false,
+          interestedInCasting: false,
           status: "active",
         },
   });
@@ -275,6 +279,23 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
                     />
                   </FormControl>
                   <FormLabel className="mb-0">Unsubscribed</FormLabel>
+                </FormItem>
+              )}
+            />
+
+            {/* Interested In Casting Checkbox */}
+            <FormField
+              control={form.control}
+              name="interestedInCasting"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-end space-x-2 space-y-0 rounded-md p-4 border">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormLabel className="mb-0">Interested in Casting</FormLabel>
                 </FormItem>
               )}
             />
