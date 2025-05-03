@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { Subscriber, Tag, RecoveryNote, Attachment } from '@/types/types';
+import { Subscriber, Tag, RecoveryNote, Attachment, SubscriberStatus } from '@/types/types';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 

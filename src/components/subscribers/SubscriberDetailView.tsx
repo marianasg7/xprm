@@ -284,6 +284,14 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   const [isUnsubscribeDialogOpen, setIsUnsubscribeDialogOpen] = useState(false);
   const [currentNote, setCurrentNote] = useState<RecoveryNote | null>(null);
 
+  // Ensure subscriber fields are properly initialized with fallbacks
+  const safeSubscriber = {
+    ...subscriber,
+    tags: subscriber.tags || [],
+    recoveryNotes: subscriber.recoveryNotes || [],
+    attachments: subscriber.attachments || [],
+  };
+
   const handleAddNote = (data: { content: string }) => {
     addRecoveryNote(subscriber.id, data.content);
     setIsAddNoteDialogOpen(false);
@@ -341,18 +349,18 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
               <div className="flex flex-col items-center p-4 border rounded-lg">
                 <Avatar className="h-20 w-20">
                   <AvatarFallback className="text-2xl bg-primary text-white">
-                    {getInitials(subscriber.name)}
+                    {getInitials(safeSubscriber.name)}
                   </AvatarFallback>
                 </Avatar>
-                <h3 className="mt-2 text-xl font-bold">{subscriber.name}</h3>
-                {subscriber.nickname && (
-                  <p className="text-muted-foreground">@{subscriber.nickname}</p>
+                <h3 className="mt-2 text-xl font-bold">{safeSubscriber.name}</h3>
+                {safeSubscriber.nickname && (
+                  <p className="text-muted-foreground">@{safeSubscriber.nickname}</p>
                 )}
                 <Badge
                   className="mt-2"
-                  variant={subscriber.status === "active" ? "default" : "destructive"}
+                  variant={safeSubscriber.status === "active" ? "default" : "destructive"}
                 >
-                  {subscriber.status === "active" ? "Active" : "Unsubscribed"}
+                  {safeSubscriber.status === "active" ? "Active" : "Unsubscribed"}
                 </Badge>
               </div>
 
@@ -363,20 +371,20 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 <CardContent className="text-sm space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Plan:</span>
-                    <span className="font-medium">{subscriber.plan}</span>
+                    <span className="font-medium">{safeSubscriber.plan}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Duration:</span>
-                    <span>{subscriber.planDuration} months</span>
+                    <span>{safeSubscriber.planDuration} months</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Start Date:</span>
-                    <span>{formatDate(subscriber.subscriptionDate)}</span>
+                    <span>{formatDate(safeSubscriber.subscriptionDate)}</span>
                   </div>
-                  {subscriber.endSubscriptionDate && (
+                  {safeSubscriber.endSubscriptionDate && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">End Date:</span>
-                      <span>{formatDate(subscriber.endSubscriptionDate)}</span>
+                      <span>{formatDate(safeSubscriber.endSubscriptionDate)}</span>
                     </div>
                   )}
                 </CardContent>
@@ -397,7 +405,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 </Button>
               </div>
               
-              {subscriber.status === "active" && (
+              {safeSubscriber.status === "active" && (
                 <Button
                   variant="outline"
                   className="w-full mt-2 border-destructive text-destructive hover:bg-destructive/10"
@@ -421,37 +429,37 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Email</p>
                       <p className="text-sm text-muted-foreground">
-                        {subscriber.email}
+                        {safeSubscriber.email}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Phone</p>
                       <p className="text-sm text-muted-foreground">
-                        {subscriber.phone}
+                        {safeSubscriber.phone}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Fansly Username</p>
                       <p className="text-sm text-muted-foreground">
-                        {subscriber.fanslyUser || "N/A"}
+                        {safeSubscriber.fanslyUser || "N/A"}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Size</p>
                       <p className="text-sm text-muted-foreground">
-                        {subscriber.size || "N/A"}
+                        {safeSubscriber.size || "N/A"}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Fetish</p>
                       <p className="text-sm text-muted-foreground">
-                        {subscriber.fetish || "N/A"}
+                        {safeSubscriber.fetish || "N/A"}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Added on</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(subscriber.createdAt)}
+                        {formatDate(safeSubscriber.createdAt)}
                       </p>
                     </div>
                   </div>
@@ -461,8 +469,8 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Tags</p>
                     <div className="flex flex-wrap gap-2">
-                      {subscriber.tags.length > 0 ? (
-                        subscriber.tags.map((tag) => (
+                      {safeSubscriber.tags.length > 0 ? (
+                        safeSubscriber.tags.map((tag) => (
                           <Badge
                             key={tag.id}
                             variant="outline"
@@ -496,9 +504,9 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                       </Button>
                     </CardHeader>
                     <CardContent>
-                      {subscriber.recoveryNotes.length > 0 ? (
+                      {safeSubscriber.recoveryNotes.length > 0 ? (
                         <div className="space-y-4">
-                          {subscriber.recoveryNotes.map((note) => (
+                          {safeSubscriber.recoveryNotes.map((note) => (
                             <Card key={note.id}>
                               <CardContent className="p-4">
                                 <div className="flex justify-between items-start">
@@ -566,9 +574,9 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                       </Button>
                     </CardHeader>
                     <CardContent>
-                      {subscriber.attachments.length > 0 ? (
+                      {safeSubscriber.attachments.length > 0 ? (
                         <div className="space-y-2">
-                          {subscriber.attachments.map((attachment) => (
+                          {safeSubscriber.attachments.map((attachment) => (
                             <div
                               key={attachment.id}
                               className="flex items-center justify-between p-2 border rounded-md"
