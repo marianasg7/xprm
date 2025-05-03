@@ -1,14 +1,35 @@
-// Update this page (the content is just a fallback if you fail to update the page)
 
-const Index = () => {
+import { SidebarTrigger, SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/sidebar/AppSidebar";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { SubscriberProvider } from "@/context/SubscriberContext";
+import Dashboard from "@/pages/Dashboard";
+import SubscribersPage from "@/pages/Subscribers";
+import NonSubscribersPage from "@/pages/NonSubscribers";
+import AnalyticsPage from "@/pages/Analytics";
+import SettingsPage from "@/pages/Settings";
+
+export default function Index() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <SubscriberProvider>
+      <SidebarProvider>
+        <div className="h-screen flex w-full overflow-hidden">
+          <AppSidebar />
+          <main className="flex-1 overflow-y-auto bg-gray-50">
+            <div className="container py-6">
+              <SidebarTrigger className="mb-6 ml-2 block md:hidden" />
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/subscribers" element={<SubscribersPage />} />
+                <Route path="/non-subscribers" element={<NonSubscribersPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    </SubscriberProvider>
   );
-};
-
-export default Index;
+}
