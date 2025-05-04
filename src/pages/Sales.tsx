@@ -31,6 +31,7 @@ import { useSubscribers } from "@/context/SubscriberContext";
 import { PlusCircle, Edit, Trash2, DollarSign, Check, Video as VideoIcon, Tags, Send, X, Upload, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Sales: React.FC = () => {
   const { toast } = useToast();
@@ -67,6 +68,7 @@ const Sales: React.FC = () => {
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
   const [sendingSale, setSendingSale] = useState<Sale | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
   // Calculate some statistics
   const totalSales = sales.reduce((sum, sale) => sum + sale.price, 0);
@@ -140,14 +142,20 @@ const Sales: React.FC = () => {
     updateSale({
       ...sale,
       paymentStatus: status,
-      // If payment is marked as paid, set sent date to now
-      ...(status === "paid" && sale.deliveryStatus !== "delivered" 
-          ? { deliveryStatus: "delivered", sentDate: new Date() } 
-          : {})
     });
   };
 
   const handleUpdateDeliveryStatus = (sale: Sale, status: DeliveryStatus) => {
+    // Check if the order has been sent to Telegram first before allowing delivery
+    if (status === "delivered" && !sale.sentDate) {
+      toast({
+        title: "Delivery Error",
+        description: "You must send the sale to Telegram before marking as delivered",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     updateSale({
       ...sale,
       deliveryStatus: status,
@@ -181,6 +189,7 @@ const Sales: React.FC = () => {
 
   const openTelegramDialog = (sale: Sale) => {
     setSendingSale(sale);
+    setDeliveryError(null);
     setTelegramDialogOpen(true);
   };
 
@@ -196,6 +205,8 @@ const Sales: React.FC = () => {
     }
 
     setIsLoading(true);
+    setDeliveryError(null);
+    
     try {
       const subscriber = subscribers.find(s => s.id === sendingSale.subscriberId);
       const video = videos.find(v => v.id === sendingSale.videoId);
@@ -219,9 +230,16 @@ const Sales: React.FC = () => {
         description: "The message was sent to Telegram successfully.",
       });
       
+      // Update the sale to include sent date
+      updateSale({
+        ...sendingSale,
+        sentDate: new Date()
+      });
+      
       setTelegramDialogOpen(false);
     } catch (error) {
       console.error("Error sending to Telegram:", error);
+      setDeliveryError("Failed to send the message to Telegram. Please check the webhook URL and try again.");
       toast({
         title: "Error",
         description: "Failed to send the message to Telegram. Please check the webhook URL.",
@@ -254,6 +272,11 @@ const Sales: React.FC = () => {
   const getVideoTitle = (id: string) => {
     const video = videos.find(v => v.id === id);
     return video ? video.title : "Unknown Video";
+  };
+
+  // Helper to check if a sale can be delivered
+  const canBeDelivered = (sale: Sale) => {
+    return sale.paymentStatus === "paid" && sale.sentDate && sale.deliveryStatus !== "delivered";
   };
 
   return (
@@ -659,8 +682,9 @@ const Sales: React.FC = () => {
                         size="sm" 
                         variant="ghost" 
                         className="h-6 w-6 p-0"
-                        disabled={sale.deliveryStatus === "delivered" || sale.paymentStatus !== "paid"}
+                        disabled={!canBeDelivered(sale)}
                         onClick={() => handleUpdateDeliveryStatus(sale, "delivered")}
+                        title={!canBeDelivered(sale) ? "Must send to Telegram before marking as delivered" : "Mark as delivered"}
                       >
                         <Check className="h-4 w-4" />
                       </Button>
@@ -668,7 +692,12 @@ const Sales: React.FC = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => openTelegramDialog(sale)}>
+                      <Button 
+                        size="sm" 
+                        variant={sale.sentDate ? "outline" : "ghost"}
+                        className={sale.sentDate ? "border-green-500 text-green-500" : ""}
+                        onClick={() => openTelegramDialog(sale)}
+                      >
                         <Send className="h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => handleEditSale(sale)}>
@@ -718,10 +747,27 @@ const Sales: React.FC = () => {
               <div className="col-span-4 text-sm text-muted-foreground">
                 Sale information for {getVideoTitle(sendingSale?.videoId || "")} will be sent to Telegram.
               </div>
+              
+              {deliveryError && (
+                <Alert variant="destructive" className="col-span-4">
+                  <AlertTitle>Delivery Failed</AlertTitle>
+                  <AlertDescription>{deliveryError}</AlertDescription>
+                </Alert>
+              )}
+              
+              {sendingSale?.sentDate && (
+                <Alert className="col-span-4">
+                  <AlertTitle>Already Sent</AlertTitle>
+                  <AlertDescription>
+                    This sale was already sent to Telegram on {formatDateTime(sendingSale.sentDate)}. 
+                    Sending again will update the delivery status.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
             <DialogFooter>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Sending..." : "Send"}
+                {isLoading ? "Sending..." : sendingSale?.sentDate ? "Resend" : "Send"}
               </Button>
             </DialogFooter>
           </form>
