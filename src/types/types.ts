@@ -53,3 +53,53 @@ export interface Casting {
   selectedSubscribers: string[]; // IDs of selected subscribers
   createdAt: Date;
 }
+
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type DeliveryStatus = 'pending' | 'delivered' | 'failed';
+
+export interface Plan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  duration: number; // in months
+  features: string[];
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface Promotion {
+  id: string;
+  planId: string;
+  name: string;
+  description: string;
+  discountPercentage: number;
+  startDate: Date;
+  endDate: Date;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface Video {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  duration: number; // in minutes
+  url: string;
+  thumbnail?: string;
+  createdAt: Date;
+  participants: string[]; // IDs of subscribers who participated
+}
+
+export interface Sale {
+  id: string;
+  videoId: string;
+  subscriberId: string;
+  saleDate: Date;
+  price: number;
+  paymentStatus: PaymentStatus;
+  deliveryStatus: DeliveryStatus;
+  sentDate?: Date;
+  createdAt: Date;
+}

@@ -9,6 +9,8 @@ import NonSubscribersPage from "@/pages/NonSubscribers";
 import AnalyticsPage from "@/pages/Analytics";
 import SettingsPage from "@/pages/Settings";
 import CastingsPage from "@/pages/Castings";
+import PlansPage from "@/pages/Plans";
+import SalesPage from "@/pages/Sales";
 
 export default function Index() {
   return (
@@ -26,6 +28,8 @@ export default function Index() {
                 <Route path="/non-subscribers" element={<NonSubscribersPage />} />
                 <Route path="/non-subscribers/:id" element={<NonSubscribersPage />} />
                 <Route path="/castings" element={<CastingsPage />} />
+                <Route path="/plans" element={<PlansPage />} />
+                <Route path="/sales" element={<SalesPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
