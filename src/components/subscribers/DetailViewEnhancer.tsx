@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { SubscriberInterestedInCasting } from "./SubscriberInterestedInCasting";
 import { useSubscribers } from "@/context/SubscriberContext";
 import { Subscriber } from "@/types/types";
+import * as ReactDOM from "react-dom/client";
 
 export function DetailViewEnhancer() {
   const [patched, setPatched] = useState(false);
