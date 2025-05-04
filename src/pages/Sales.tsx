@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { 
   Card, CardContent, CardHeader, CardTitle, CardDescription 
 } from "@/components/ui/card";
@@ -24,17 +24,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useSales } from "@/context/SalesContext";
 import { Video, Sale, PaymentStatus, DeliveryStatus } from "@/types/types";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { useSubscribers } from "@/context/SubscriberContext";
-import { PlusCircle, Edit, Trash2, DollarSign, Check, Video as VideoIcon, Tags } from "lucide-react";
+import { PlusCircle, Edit, Trash2, DollarSign, Check, Video as VideoIcon, Tags, Send, X, Upload, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
 
 const Sales: React.FC = () => {
+  const { toast } = useToast();
   const { videos, sales, addVideo, updateVideo, deleteVideo, addSale, updateSale, deleteSale } = useSales();
   const { subscribers } = useSubscribers();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newVideo, setNewVideo] = useState<Omit<Video, "id" | "createdAt">>({
     title: "",
@@ -59,8 +61,12 @@ const Sales: React.FC = () => {
   
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
-
-  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
+  
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [telegramWebhookUrl, setTelegramWebhookUrl] = useState<string>("");
+  const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
+  const [sendingSale, setSendingSale] = useState<Sale | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Calculate some statistics
   const totalSales = sales.reduce((sum, sale) => sum + sale.price, 0);
@@ -71,13 +77,12 @@ const Sales: React.FC = () => {
     if (editingVideo) {
       updateVideo({
         ...editingVideo,
-        participants: selectedParticipants
       });
       setEditingVideo(null);
     } else {
       addVideo({
         ...newVideo,
-        participants: selectedParticipants
+        participants: []
       });
       setNewVideo({
         title: "",
@@ -88,7 +93,7 @@ const Sales: React.FC = () => {
         participants: []
       });
     }
-    setSelectedParticipants([]);
+    setVideoPreview(null);
     setVideoDialogOpen(false);
   };
 
@@ -122,23 +127,13 @@ const Sales: React.FC = () => {
 
   const handleEditVideo = (video: Video) => {
     setEditingVideo(video);
-    setSelectedParticipants(video.participants);
+    setVideoPreview(null);
     setVideoDialogOpen(true);
   };
 
   const handleEditSale = (sale: Sale) => {
     setEditingSale(sale);
     setSaleDialogOpen(true);
-  };
-
-  const handleToggleParticipant = (subscriberId: string) => {
-    setSelectedParticipants(prev => {
-      if (prev.includes(subscriberId)) {
-        return prev.filter(id => id !== subscriberId);
-      } else {
-        return [...prev, subscriberId];
-      }
-    });
   };
 
   const handleUpdatePaymentStatus = (sale: Sale, status: PaymentStatus) => {
@@ -160,10 +155,99 @@ const Sales: React.FC = () => {
     });
   };
 
-  // Helper function to get subscriber name
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Create a URL for the video preview
+    const objectUrl = URL.createObjectURL(file);
+    setVideoPreview(objectUrl);
+    
+    // Update video details based on file
+    const videoData = editingVideo ? {...editingVideo} : {...newVideo};
+    videoData.title = videoData.title || file.name.split('.')[0];
+    videoData.url = objectUrl;
+    
+    if (editingVideo) {
+      setEditingVideo(videoData as Video);
+    } else {
+      setNewVideo(videoData);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const openTelegramDialog = (sale: Sale) => {
+    setSendingSale(sale);
+    setTelegramDialogOpen(true);
+  };
+
+  const sendToTelegram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sendingSale || !telegramWebhookUrl) {
+      toast({
+        title: "Error",
+        description: "Please enter your Telegram webhook URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const subscriber = subscribers.find(s => s.id === sendingSale.subscriberId);
+      const video = videos.find(v => v.id === sendingSale.videoId);
+      
+      // Mock sending to Telegram (in a real app, this would connect to an actual webhook)
+      // Using no-cors mode to prevent CORS issues with the webhook
+      await fetch(telegramWebhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        mode: "no-cors",
+        body: JSON.stringify({
+          message: `Video: ${video?.title}\nSent to: ${subscriber?.name}\nPrice: $${sendingSale.price}\nStatus: ${sendingSale.paymentStatus}`,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      toast({
+        title: "Notification Sent",
+        description: "The message was sent to Telegram successfully.",
+      });
+      
+      setTelegramDialogOpen(false);
+    } catch (error) {
+      console.error("Error sending to Telegram:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send the message to Telegram. Please check the webhook URL.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to get subscriber name with status indicator
   const getSubscriberName = (id: string) => {
     const subscriber = subscribers.find(s => s.id === id);
-    return subscriber ? subscriber.name : "Unknown Subscriber";
+    if (!subscriber) return "Unknown Subscriber";
+    
+    // If the subscriber is inactive, we'll render their name with a red X
+    if (subscriber.status !== 'active') {
+      return (
+        <div className="flex items-center">
+          <span>{subscriber.name}</span>
+          <X className="ml-1 h-4 w-4 text-red-500" />
+        </div>
+      );
+    }
+    
+    return subscriber.name;
   };
 
   // Helper function to get video title
@@ -216,7 +300,7 @@ const Sales: React.FC = () => {
           <DialogTrigger asChild>
             <Button onClick={() => {
               setEditingVideo(null);
-              setSelectedParticipants([]);
+              setVideoPreview(null);
               setNewVideo({
                 title: "",
                 description: "",
@@ -291,34 +375,45 @@ const Sales: React.FC = () => {
                   }}
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="video-url" className="col-span-1">Video URL</Label>
-                <Input
-                  id="video-url"
-                  className="col-span-3"
-                  type="url"
-                  value={editingVideo ? editingVideo.url : newVideo.url}
-                  onChange={(e) => editingVideo
-                    ? setEditingVideo({...editingVideo, url: e.target.value})
-                    : setNewVideo({...newVideo, url: e.target.value})
-                  }
-                />
-              </div>
               <div className="grid grid-cols-4 items-start gap-4">
-                <Label className="col-span-1 pt-2">Participants</Label>
-                <div className="col-span-3 border rounded-md p-2 max-h-40 overflow-y-auto">
-                  {subscribers.filter(s => s.status === 'active').map((subscriber) => (
-                    <div key={subscriber.id} className="flex items-center space-x-2 py-1">
-                      <Checkbox 
-                        id={`participant-${subscriber.id}`}
-                        checked={selectedParticipants.includes(subscriber.id)}
-                        onCheckedChange={() => handleToggleParticipant(subscriber.id)}
-                      />
-                      <Label htmlFor={`participant-${subscriber.id}`}>
-                        {subscriber.name} {subscriber.nickname ? `(${subscriber.nickname})` : ''}
-                      </Label>
-                    </div>
-                  ))}
+                <Label className="col-span-1">Video File</Label>
+                <div className="col-span-3">
+                  <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    accept="video/*"
+                    className="hidden" 
+                    onChange={handleFileChange}
+                  />
+                  <div className="flex flex-col gap-3">
+                    <Button type="button" onClick={triggerFileInput} variant="outline">
+                      <Upload className="mr-2 h-4 w-4" /> Upload Video
+                    </Button>
+                    {videoPreview && (
+                      <div className="mt-2">
+                        <Label htmlFor="video-preview" className="mb-1">Preview</Label>
+                        <div className="relative aspect-video w-full bg-slate-100 rounded-md overflow-hidden">
+                          <video 
+                            src={videoPreview} 
+                            controls 
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {!videoPreview && (editingVideo?.url || newVideo.url) && (
+                      <div className="flex items-center">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="flex items-center"
+                          onClick={() => window.open(editingVideo?.url || newVideo.url, '_blank')}
+                        >
+                          <Eye className="mr-2 h-4 w-4" /> View Current Video
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -353,17 +448,16 @@ const Sales: React.FC = () => {
             <CardContent>
               <p className="text-sm mb-2">{video.description}</p>
               
-              {video.participants.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-sm font-medium mb-1">Participants:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {video.participants.map(participantId => (
-                      <Badge key={participantId} variant="outline">
-                        {getSubscriberName(participantId)}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
+              {video.url && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  className="mt-2 flex items-center"
+                  onClick={() => window.open(video.url, '_blank')}
+                >
+                  <Eye className="mr-2 h-4 w-4" /> Preview Video
+                </Button>
               )}
             </CardContent>
           </Card>
@@ -573,12 +667,17 @@ const Sales: React.FC = () => {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" variant="ghost" onClick={() => handleEditSale(sale)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => deleteSale(sale.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => openTelegramDialog(sale)}>
+                        <Send className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleEditSale(sale)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => deleteSale(sale.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -594,6 +693,40 @@ const Sales: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={telegramDialogOpen} onOpenChange={setTelegramDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Send to Telegram</DialogTitle>
+            <DialogDescription>
+              Enter your Telegram webhook URL to send this sale information.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={sendToTelegram}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="telegram-webhook" className="col-span-4">Webhook URL</Label>
+                <Input
+                  id="telegram-webhook"
+                  className="col-span-4"
+                  value={telegramWebhookUrl}
+                  onChange={(e) => setTelegramWebhookUrl(e.target.value)}
+                  placeholder="https://api.telegram.org/bot..."
+                  required
+                />
+              </div>
+              <div className="col-span-4 text-sm text-muted-foreground">
+                Sale information for {getVideoTitle(sendingSale?.videoId || "")} will be sent to Telegram.
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Sending..." : "Send"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
