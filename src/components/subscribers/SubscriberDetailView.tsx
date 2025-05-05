@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
@@ -11,6 +10,8 @@ import {
   Calendar,
   Cast,
   Tags,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Subscriber, RecoveryNote } from "@/types/types";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { 
+  Collapsible, 
+  CollapsibleContent, 
+  CollapsibleTrigger 
+} from "@/components/ui/collapsible";
 
 interface SubscriberDetailViewProps {
   subscriber: Subscriber;
@@ -288,7 +294,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     deleteAttachment,
     unsubscribe,
     updateSubscriber,
-    subscribers,  // Add this to get real-time subscriber data
+    subscribers,
   } = useSubscribers();
   
   const { plans } = useSales();
@@ -300,6 +306,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   const [currentNote, setCurrentNote] = useState<RecoveryNote | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isAssignPlanDialogOpen, setIsAssignPlanDialogOpen] = useState(false);
+  const [isPlansExpanded, setIsPlansExpanded] = useState(false);
   const [currentSubscriber, setCurrentSubscriber] = useState<Subscriber>(subscriber);
 
   // Find the latest subscriber data whenever the subscriber ID changes or subscribers list changes
@@ -472,15 +479,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 </Button>
               </div>
               
-              {safeSubscriber.status === "active" && (
-                <Button
-                  variant="outline"
-                  className="w-full mt-2 border-destructive text-destructive hover:bg-destructive/10"
-                  onClick={() => setIsUnsubscribeDialogOpen(true)}
-                >
-                  Mark as Unsubscribed
-                </Button>
-              )}
+              {/* Removed the Mark as Unsubscribed button since it's handled automatically */}
             </div>
 
             <div className="md:w-2/3">
@@ -805,37 +804,54 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                         <Separator />
                         
                         <div className="space-y-2">
-                          <p className="text-sm font-medium">Available Plans</p>
-                          {availablePlans.length > 0 ? (
-                            <div className="space-y-3">
-                              {availablePlans.map((plan) => (
-                                <div key={plan.id} className="p-3 border rounded-md">
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <h4 className="font-medium">{plan.name}</h4>
-                                      <p className="text-sm text-muted-foreground">{plan.description}</p>
+                          <Collapsible 
+                            open={isPlansExpanded} 
+                            onOpenChange={setIsPlansExpanded}
+                            className="w-full"
+                          >
+                            <CollapsibleTrigger asChild>
+                              <div className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded-md">
+                                <p className="text-sm font-medium">Available Plans</p>
+                                {isPlansExpanded ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              {availablePlans.length > 0 ? (
+                                <div className="space-y-3 mt-2">
+                                  {availablePlans.map((plan) => (
+                                    <div key={plan.id} className="p-3 border rounded-md">
+                                      <div className="flex justify-between items-center">
+                                        <div>
+                                          <h4 className="font-medium">{plan.name}</h4>
+                                          <p className="text-sm text-muted-foreground">{plan.description}</p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="font-medium">${plan.price}</p>
+                                          <p className="text-xs text-muted-foreground">{plan.duration} months</p>
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 flex gap-2">
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => handleAssignPlan(plan.id)}
+                                          disabled={safeSubscriber.plan === plan.name}
+                                        >
+                                          {safeSubscriber.plan === plan.name ? "Current Plan" : "Assign Plan"}
+                                        </Button>
+                                      </div>
                                     </div>
-                                    <div className="text-right">
-                                      <p className="font-medium">${plan.price}</p>
-                                      <p className="text-xs text-muted-foreground">{plan.duration} months</p>
-                                    </div>
-                                  </div>
-                                  <div className="mt-2 flex gap-2">
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline"
-                                      onClick={() => handleAssignPlan(plan.id)}
-                                      disabled={safeSubscriber.plan === plan.name}
-                                    >
-                                      {safeSubscriber.plan === plan.name ? "Current Plan" : "Assign Plan"}
-                                    </Button>
-                                  </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">No plans available</p>
-                          )}
+                              ) : (
+                                <p className="text-sm text-muted-foreground mt-2">No plans available</p>
+                              )}
+                            </CollapsibleContent>
+                          </Collapsible>
                         </div>
                       </div>
                     </CardContent>
