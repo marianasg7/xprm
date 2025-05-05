@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   CalendarIcon,
@@ -287,9 +288,10 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     deleteAttachment,
     unsubscribe,
     updateSubscriber,
+    subscribers,  // Add this to get real-time subscriber data
   } = useSubscribers();
   
-  const { plans, updatePlan } = useSales();
+  const { plans } = useSales();
 
   const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false);
   const [isEditNoteDialogOpen, setIsEditNoteDialogOpen] = useState(false);
@@ -298,41 +300,50 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   const [currentNote, setCurrentNote] = useState<RecoveryNote | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isAssignPlanDialogOpen, setIsAssignPlanDialogOpen] = useState(false);
+  const [currentSubscriber, setCurrentSubscriber] = useState<Subscriber>(subscriber);
+
+  // Find the latest subscriber data whenever the subscriber ID changes or subscribers list changes
+  useEffect(() => {
+    const latestSubscriber = subscribers.find(sub => sub.id === subscriber.id);
+    if (latestSubscriber) {
+      setCurrentSubscriber(latestSubscriber);
+    }
+  }, [subscriber.id, subscribers]);
 
   // Ensure subscriber fields are properly initialized with fallbacks
   const safeSubscriber = {
-    ...subscriber,
-    tags: subscriber.tags || [],
-    recoveryNotes: subscriber.recoveryNotes || [],
-    attachments: subscriber.attachments || [],
-    castingParticipations: subscriber.castingParticipations || [],
-    interestedInCasting: subscriber.interestedInCasting || false,
+    ...currentSubscriber,
+    tags: currentSubscriber.tags || [],
+    recoveryNotes: currentSubscriber.recoveryNotes || [],
+    attachments: currentSubscriber.attachments || [],
+    castingParticipations: currentSubscriber.castingParticipations || [],
+    interestedInCasting: currentSubscriber.interestedInCasting || false,
   };
 
   // Get all castings this subscriber is participating in
   const subscriberCastings = castings.filter(casting => 
-    casting.selectedSubscribers.includes(subscriber.id)
+    casting.selectedSubscribers.includes(currentSubscriber.id)
   );
 
   const handleAddNote = (data: { content: string }) => {
-    addRecoveryNote(subscriber.id, data.content);
+    addRecoveryNote(currentSubscriber.id, data.content);
     setIsAddNoteDialogOpen(false);
   };
 
   const handleEditNote = (data: { content: string }) => {
     if (currentNote) {
-      updateRecoveryNote(subscriber.id, currentNote.id, data.content);
+      updateRecoveryNote(currentSubscriber.id, currentNote.id, data.content);
       setIsEditNoteDialogOpen(false);
       setCurrentNote(null);
     }
   };
 
   const handleDeleteNote = (noteId: string) => {
-    deleteRecoveryNote(subscriber.id, noteId);
+    deleteRecoveryNote(currentSubscriber.id, noteId);
   };
 
   const handleAddAttachment = (data: { name: string; url: string; type: string }) => {
-    addAttachment(subscriber.id, {
+    addAttachment(currentSubscriber.id, {
       name: data.name,
       url: data.url,
       type: data.type,
@@ -341,11 +352,11 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   };
 
   const handleDeleteAttachment = (attachmentId: string) => {
-    deleteAttachment(subscriber.id, attachmentId);
+    deleteAttachment(currentSubscriber.id, attachmentId);
   };
 
   const handleUnsubscribe = (date: Date) => {
-    unsubscribe(subscriber.id, date);
+    unsubscribe(currentSubscriber.id, date);
     setIsUnsubscribeDialogOpen(false);
     onClose(); // Close the detail view and go back to the list
   };
@@ -357,7 +368,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
 
   // Get all plans this subscriber might use
   const availablePlans = plans.filter(plan => plan.isActive);
-  const subscriberCurrentPlan = subscriber.plan;
+  const subscriberCurrentPlan = safeSubscriber.plan;
 
   // Determine which tabs to show based on subscriber status
   const showRecoveryTab = safeSubscriber.status === "inactive";
@@ -376,7 +387,10 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   const handleAssignPlan = (planId: string) => {
     const plan = plans.find(p => p.id === planId);
     if (plan) {
-      updateSubscriber(subscriber.id, { plan: plan.name });
+      updateSubscriber(currentSubscriber.id, { 
+        plan: plan.name,
+        planDuration: plan.duration
+      });
       setIsAssignPlanDialogOpen(false);
     }
   };
@@ -424,7 +438,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 <CardContent className="text-sm space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Plan:</span>
-                    <span className="font-medium">{safeSubscriber.plan}</span>
+                    <span className="font-medium">{safeSubscriber.plan || "None"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Duration:</span>

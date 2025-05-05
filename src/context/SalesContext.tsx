@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState } from "react";
 import { Plan, Promotion, Sale, Video } from "@/types/types";
+import { nanoid } from "nanoid";
 
 type SalesContextType = {
   plans: Plan[];
@@ -21,6 +22,52 @@ type SalesContextType = {
   deleteSale: (id: string) => void;
 };
 
+// Generate mock plans for testing
+const generateMockPlans = (): Plan[] => {
+  return [
+    {
+      id: nanoid(),
+      name: "Basic",
+      description: "Standard subscription with basic features",
+      price: 9.99,
+      duration: 1,
+      features: ["Basic content", "Monthly updates"],
+      isActive: true,
+      createdAt: new Date(),
+    },
+    {
+      id: nanoid(),
+      name: "Premium",
+      description: "Premium subscription with exclusive content",
+      price: 19.99,
+      duration: 3,
+      features: ["All basic features", "Exclusive content", "Priority support"],
+      isActive: true,
+      createdAt: new Date(),
+    },
+    {
+      id: nanoid(),
+      name: "Gold",
+      description: "Gold tier with all premium features plus extras",
+      price: 29.99,
+      duration: 6,
+      features: ["All premium features", "Early access", "Bonus content"],
+      isActive: true,
+      createdAt: new Date(),
+    },
+    {
+      id: nanoid(),
+      name: "Platinum",
+      description: "Our best yearly subscription with all features",
+      price: 99.99,
+      duration: 12,
+      features: ["All gold features", "Casting priority", "Personalized content"],
+      isActive: true,
+      createdAt: new Date(),
+    },
+  ];
+};
+
 const SalesContext = createContext<SalesContextType | undefined>(undefined);
 
 export const useSales = () => {
@@ -32,7 +79,7 @@ export const useSales = () => {
 };
 
 export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<Plan[]>(generateMockPlans());
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -40,7 +87,7 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addPlan = (plan: Omit<Plan, "id" | "createdAt">) => {
     const newPlan: Plan = {
       ...plan,
-      id: crypto.randomUUID(),
+      id: nanoid(),
       createdAt: new Date(),
     };
     setPlans([...plans, newPlan]);

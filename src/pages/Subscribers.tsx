@@ -165,6 +165,7 @@ const SubscribersPage: React.FC = () => {
       {/* Subscriber Detail View Modal */}
       {selectedSubscriber && (
         <SubscriberDetailView
+          key={`detail-${selectedSubscriber.id}-${selectedSubscriber.plan || 'no-plan'}`}
           subscriber={selectedSubscriber}
           onClose={() => setSelectedSubscriber(null)}
           onEdit={() => {
