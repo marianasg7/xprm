@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useSubscribers } from "@/context/SubscriberContext";
 import { Subscriber } from "@/types/types";
@@ -30,6 +29,7 @@ const SubscribersPage: React.FC = () => {
   const [selectedSubscriber, setSelectedSubscriber] = useState<Subscriber | null>(null);
   const [subscriberToEdit, setSubscriberToEdit] = useState<Subscriber | null>(null);
   const [subscriberToDelete, setSubscriberToDelete] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const activeSubscribers = subscribers.filter(
     (subscriber) => subscriber.status === "active"
@@ -48,7 +48,18 @@ const SubscribersPage: React.FC = () => {
   );
 
   const handleAddSubscriber = (data: Omit<Subscriber, "id" | "createdAt">) => {
-    addSubscriber(data);
+    // Handle image upload if provided
+    let subscriberData = data;
+    if ((data as any).photoFile) {
+      const photoFile = (data as any).photoFile;
+      const photoUrl = URL.createObjectURL(photoFile);
+      subscriberData = {
+        ...data,
+        photoUrl
+      };
+    }
+    
+    addSubscriber(subscriberData);
     setIsFormOpen(false);
   };
 
@@ -83,19 +94,32 @@ const SubscribersPage: React.FC = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search subscribers..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex gap-2">
+          {isSearchOpen ? (
+            <div className="relative">
+              <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search subscribers..."
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+                onBlur={() => {
+                  if (!searchQuery) setIsSearchOpen(false);
+                }}
+              />
+            </div>
+          ) : (
+            <Button variant="outline" onClick={() => setIsSearchOpen(true)}>
+              <Search className="mr-2 h-4 w-4" />
+              Search
+            </Button>
+          )}
+          <Button onClick={() => setIsFormOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Subscriber
+          </Button>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Subscriber
-        </Button>
       </div>
 
       {sortedSubscribers.length > 0 ? (
@@ -158,6 +182,7 @@ const SubscribersPage: React.FC = () => {
               setIsFormOpen(false);
               setSubscriberToEdit(null);
             }}
+            enablePhotoUpload={true} // Add this prop to enable photo upload
           />
         </DialogContent>
       </Dialog>
