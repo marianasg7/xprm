@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { format } from "date-fns";
 import {
@@ -10,6 +9,7 @@ import {
   X,
   Calendar,
   Cast,
+  Tags,
 } from "lucide-react";
 import { Subscriber, RecoveryNote } from "@/types/types";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatTimeAgo, getInitials } from "@/lib/utils";
 import { useSubscribers } from "@/context/SubscriberContext";
+import { useSales } from "@/context/SalesContext";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,13 @@ import {
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SubscriberDetailViewProps {
   subscriber: Subscriber;
@@ -278,13 +286,18 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     addAttachment,
     deleteAttachment,
     unsubscribe,
+    updateSubscriber,
   } = useSubscribers();
+  
+  const { plans, updatePlan } = useSales();
 
   const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false);
   const [isEditNoteDialogOpen, setIsEditNoteDialogOpen] = useState(false);
   const [isAddAttachmentDialogOpen, setIsAddAttachmentDialogOpen] = useState(false);
   const [isUnsubscribeDialogOpen, setIsUnsubscribeDialogOpen] = useState(false);
   const [currentNote, setCurrentNote] = useState<RecoveryNote | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [isAssignPlanDialogOpen, setIsAssignPlanDialogOpen] = useState(false);
 
   // Ensure subscriber fields are properly initialized with fallbacks
   const safeSubscriber = {
@@ -342,6 +355,10 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     setIsEditNoteDialogOpen(true);
   };
 
+  // Get all plans this subscriber might use
+  const availablePlans = plans.filter(plan => plan.isActive);
+  const subscriberCurrentPlan = subscriber.plan;
+
   // Determine which tabs to show based on subscriber status
   const showRecoveryTab = safeSubscriber.status === "inactive";
   // Only show casting tab if subscriber is active AND interested in casting
@@ -354,6 +371,15 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   } else if (showRecoveryTab) {
     defaultTab = "recovery";
   }
+
+  // Handle assigning a plan to the subscriber
+  const handleAssignPlan = (planId: string) => {
+    const plan = plans.find(p => p.id === planId);
+    if (plan) {
+      updateSubscriber(subscriber.id, { plan: plan.name });
+      setIsAssignPlanDialogOpen(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -445,7 +471,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
 
             <div className="md:w-2/3">
               <Tabs defaultValue={defaultTab} className="w-full">
-                <TabsList className="grid grid-cols-3">
+                <TabsList className="grid grid-cols-5">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   {showCastingTab && (
                     <TabsTrigger value="casting">Casting</TabsTrigger>
@@ -454,6 +480,10 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     <TabsTrigger value="recovery">Recovery Plan</TabsTrigger>
                   )}
                   <TabsTrigger value="attachments">Attachments</TabsTrigger>
+                  <TabsTrigger value="plans">
+                    <Tags className="h-4 w-4 mr-1" />
+                    Plans
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="details" className="mt-4 space-y-4">
@@ -723,6 +753,80 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     </CardContent>
                   </Card>
                 </TabsContent>
+
+                <TabsContent value="plans" className="mt-4">
+                  <Card>
+                    <CardHeader className="pb-2 flex flex-row justify-between items-center">
+                      <div>
+                        <CardTitle className="text-lg">Subscription Plans</CardTitle>
+                        <CardDescription>
+                          Manage subscriber's plan subscription
+                        </CardDescription>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => setIsAssignPlanDialogOpen(true)}
+                      >
+                        <PlusCircle className="h-4 w-4 mr-1" />
+                        Assign Plan
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">Current Plan</p>
+                            <p className="text-sm text-muted-foreground">
+                              {safeSubscriber.plan || "No plan assigned"}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">Duration</p>
+                            <p className="text-sm text-muted-foreground">
+                              {safeSubscriber.planDuration} months
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Available Plans</p>
+                          {availablePlans.length > 0 ? (
+                            <div className="space-y-3">
+                              {availablePlans.map((plan) => (
+                                <div key={plan.id} className="p-3 border rounded-md">
+                                  <div className="flex justify-between items-center">
+                                    <div>
+                                      <h4 className="font-medium">{plan.name}</h4>
+                                      <p className="text-sm text-muted-foreground">{plan.description}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-medium">${plan.price}</p>
+                                      <p className="text-xs text-muted-foreground">{plan.duration} months</p>
+                                    </div>
+                                  </div>
+                                  <div className="mt-2 flex gap-2">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => handleAssignPlan(plan.id)}
+                                      disabled={safeSubscriber.plan === plan.name}
+                                    >
+                                      {safeSubscriber.plan === plan.name ? "Current Plan" : "Assign Plan"}
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No plans available</p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
               </Tabs>
             </div>
           </div>
@@ -806,6 +910,55 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
             onSubmit={handleUnsubscribe}
             onCancel={() => setIsUnsubscribeDialogOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Plan Dialog */}
+      <Dialog
+        open={isAssignPlanDialogOpen}
+        onOpenChange={setIsAssignPlanDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Plan to Subscriber</DialogTitle>
+            <DialogDescription>
+              Select a plan to assign to this subscriber
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="plan-select">Plan</Label>
+              <Select
+                value={selectedPlan || undefined}
+                onValueChange={setSelectedPlan}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePlans.map(plan => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - ${plan.price} / {plan.duration} months
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsAssignPlanDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => selectedPlan && handleAssignPlan(selectedPlan)}
+              disabled={!selectedPlan}
+            >
+              Assign Plan
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
