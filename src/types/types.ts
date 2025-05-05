@@ -29,6 +29,7 @@ export interface Subscriber {
   size: string;
   fetish: string;
   fanslyUser: string;
+  photoUrl?: string;
   subscriptionDate: Date;
   endSubscriptionDate?: Date;
   status: SubscriberStatus;

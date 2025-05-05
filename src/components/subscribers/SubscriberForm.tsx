@@ -44,6 +44,7 @@ const formSchema = z.object({
   size: z.string().optional(),
   fetish: z.string().optional(),
   fanslyUser: z.string().optional(),
+  photoUrl: z.string().optional(),
   subscriptionDate: z.date({ required_error: "Subscription date is required" }),
   plan: z.string().min(1, { message: "Plan is required" }),
   planDuration: z.number().min(1, { message: "Plan duration is required" }),
@@ -63,12 +64,14 @@ interface SubscriberFormProps {
   initialData?: Subscriber;
   onSubmit: (data: z.infer<typeof formSchema>) => void;
   onCancel: () => void;
+  enablePhotoUpload?: boolean;
 }
 
 const SubscriberForm: React.FC<SubscriberFormProps> = ({
   initialData,
   onSubmit,
   onCancel,
+  enablePhotoUpload = false,
 }) => {
   const { tags, addTag } = useSubscribers();
   const isEditing = !!initialData;
@@ -93,6 +96,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
           size: "",
           fetish: "",
           fanslyUser: "",
+          photoUrl: "",
           subscriptionDate: new Date(),
           plan: "Basic",
           planDuration: 1,
@@ -116,16 +120,81 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
     return addTag(name);
   };
 
+  const [photoFile, setPhotoFile] = React.useState<File | null>(null);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPhotoFile(e.target.files[0]);
+      
+      // Create a preview URL for the selected image
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          form.setValue("photoUrl", event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  const handleFormSubmit = (data: z.infer<typeof formSchema>) => {
+    // Add the photo file to the form data for processing in the parent component
+    const formData = {
+      ...data,
+      photoFile: photoFile
+    };
+    onSubmit(formData as any);
+  };
+
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(handleFormSubmit)}
         className="space-y-6 max-w-4xl"
       >
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">
             {isEditing ? "Edit Subscriber" : "Add New Subscriber"}
           </h2>
+
+          {enablePhotoUpload && (
+            <div className="mb-4">
+              <FormLabel>Profile Photo</FormLabel>
+              <div className="flex items-center space-x-4 mt-2">
+                {form.watch("photoUrl") ? (
+                  <div className="relative w-20 h-20">
+                    <img 
+                      src={form.watch("photoUrl")} 
+                      alt="Profile preview" 
+                      className="w-20 h-20 rounded-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                      onClick={() => {
+                        form.setValue("photoUrl", "");
+                        setPhotoFile(null);
+                      }}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full">
+                    <span className="text-3xl text-gray-400">+</span>
+                  </div>
+                )}
+                <Input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="max-w-xs"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
