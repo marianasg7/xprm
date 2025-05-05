@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
@@ -8,7 +9,7 @@ import {
   Paperclip,
   X,
   Calendar,
-  Cast,
+  Camera,
   Tags,
   ChevronDown,
   ChevronUp,
@@ -24,7 +25,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatTimeAgo, getInitials } from "@/lib/utils";
@@ -297,7 +298,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     subscribers,
   } = useSubscribers();
   
-  const { plans } = useSales();
+  const { plans, promotions } = useSales();
 
   const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false);
   const [isEditNoteDialogOpen, setIsEditNoteDialogOpen] = useState(false);
@@ -307,6 +308,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isAssignPlanDialogOpen, setIsAssignPlanDialogOpen] = useState(false);
   const [isPlansExpanded, setIsPlansExpanded] = useState(false);
+  const [isPromotionsExpanded, setIsPromotionsExpanded] = useState(false);
   const [currentSubscriber, setCurrentSubscriber] = useState<Subscriber>(subscriber);
 
   // Find the latest subscriber data whenever the subscriber ID changes or subscribers list changes
@@ -376,19 +378,20 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   // Get all plans this subscriber might use
   const availablePlans = plans.filter(plan => plan.isActive);
   const subscriberCurrentPlan = safeSubscriber.plan;
+  
+  // Get promotions relevant to this subscriber
+  const activePromotions = promotions.filter(promo => 
+    promo.isActive && 
+    new Date(promo.endDate) >= new Date()
+  );
 
   // Determine which tabs to show based on subscriber status
   const showRecoveryTab = safeSubscriber.status === "inactive";
   // Only show casting tab if subscriber is active AND interested in casting
   const showCastingTab = safeSubscriber.status === "active" && safeSubscriber.interestedInCasting;
   
-  // Determine default tab based on subscriber status
-  let defaultTab = "details";
-  if (showCastingTab) {
-    defaultTab = "casting";
-  } else if (showRecoveryTab) {
-    defaultTab = "recovery";
-  }
+  // Always default to details tab
+  const defaultTab = "details";
 
   // Handle assigning a plan to the subscriber
   const handleAssignPlan = (planId: string) => {
@@ -417,25 +420,30 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
             <div className="md:w-1/3">
               <div className="flex flex-col items-center p-4 border rounded-lg">
                 <Avatar className="h-20 w-20">
-                  <AvatarFallback className="text-2xl bg-primary text-white">
-                    {getInitials(safeSubscriber.name)}
-                  </AvatarFallback>
+                  {safeSubscriber.photoUrl ? (
+                    <AvatarImage src={safeSubscriber.photoUrl} alt={safeSubscriber.name} />
+                  ) : (
+                    <AvatarFallback className="text-2xl bg-primary text-white">
+                      {getInitials(safeSubscriber.name)}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
                 <h3 className="mt-2 text-xl font-bold">{safeSubscriber.name}</h3>
                 {safeSubscriber.nickname && (
                   <p className="text-muted-foreground">@{safeSubscriber.nickname}</p>
                 )}
-                <Badge
-                  className="mt-2"
-                  variant={safeSubscriber.status === "active" ? "default" : "destructive"}
-                >
-                  {safeSubscriber.status === "active" ? "Active" : "Unsubscribed"}
-                </Badge>
-                {safeSubscriber.interestedInCasting && safeSubscriber.status === "active" && (
-                  <Badge className="mt-2 bg-orange-500" variant="outline">
-                    <Cast className="h-3 w-3 mr-1" /> Casting Interest
-                  </Badge>
-                )}
+                <div className="flex items-center mt-2">
+                  {safeSubscriber.status === "active" ? (
+                    <Circle className="h-3 w-3 text-green-500 fill-green-500 mr-2" />
+                  ) : (
+                    <Badge variant="destructive">Unsubscribed</Badge>
+                  )}
+                  {safeSubscriber.interestedInCasting && safeSubscriber.status === "active" && (
+                    <Badge className="ml-2 bg-orange-500" variant="outline">
+                      <Camera className="h-3 w-3 mr-1" />
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               <Card className="mt-4">
@@ -478,8 +486,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                   Delete
                 </Button>
               </div>
-              
-              {/* Removed the Mark as Unsubscribed button since it's handled automatically */}
             </div>
 
             <div className="md:w-2/3">
@@ -849,6 +855,71 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                                 </div>
                               ) : (
                                 <p className="text-sm text-muted-foreground mt-2">No plans available</p>
+                              )}
+                            </CollapsibleContent>
+                          </Collapsible>
+                          
+                          {/* Add Promotions Collapsible */}
+                          <Collapsible 
+                            open={isPromotionsExpanded} 
+                            onOpenChange={setIsPromotionsExpanded}
+                            className="w-full mt-4"
+                          >
+                            <CollapsibleTrigger asChild>
+                              <div className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded-md">
+                                <p className="text-sm font-medium">Active Promotions</p>
+                                {isPromotionsExpanded ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              {activePromotions.length > 0 ? (
+                                <div className="space-y-3 mt-2">
+                                  {activePromotions.map((promo) => {
+                                    // Find associated plan
+                                    const plan = plans.find(p => p.id === promo.planId);
+                                    return (
+                                      <div key={promo.id} className="p-3 border rounded-md border-orange-200 bg-orange-50">
+                                        <div className="flex justify-between items-center">
+                                          <div>
+                                            <h4 className="font-medium">{promo.name}</h4>
+                                            <p className="text-sm text-muted-foreground">{promo.description}</p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                              Valid until: {formatDate(promo.endDate)}
+                                            </p>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="flex items-center gap-2">
+                                              <Badge variant="outline" className="bg-orange-100">
+                                                {promo.discountPercentage}% OFF
+                                              </Badge>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                              {plan?.name || "Unknown plan"}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        {plan && (
+                                          <div className="mt-2 flex gap-2">
+                                            <Button 
+                                              size="sm" 
+                                              variant="outline"
+                                              onClick={() => handleAssignPlan(plan.id)}
+                                              className="border-orange-300 bg-orange-100 hover:bg-orange-200"
+                                            >
+                                              Apply Promotion
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground mt-2">No active promotions</p>
                               )}
                             </CollapsibleContent>
                           </Collapsible>

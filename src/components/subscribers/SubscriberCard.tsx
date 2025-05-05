@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, getInitials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Cast, Circle } from "lucide-react";
+import { Camera, Circle } from "lucide-react";
 
 interface SubscriberCardProps {
   subscriber: Subscriber;
@@ -33,7 +33,7 @@ export default function SubscriberCard({ subscriber, onClick }: SubscriberCardPr
               <CardTitle className="text-lg">
                 {subscriber.nickname || subscriber.name}
                 {subscriber.interestedInCasting && (
-                  <Cast className="h-4 w-4 inline ml-2 text-amber-500" />
+                  <Camera className="h-4 w-4 inline ml-2 text-amber-500" />
                 )}
               </CardTitle>
               <div className="text-sm text-muted-foreground">

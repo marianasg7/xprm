@@ -1,9 +1,10 @@
+
 import React, { useState } from "react";
 import { useSubscribers } from "@/context/SubscriberContext";
 import { Subscriber } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, X } from "lucide-react";
 import SubscriberForm from "@/components/subscribers/SubscriberForm";
 import SubscriberCard from "@/components/subscribers/SubscriberCard";
 import SubscriberDetailView from "@/components/subscribers/SubscriberDetailView";
@@ -100,7 +101,7 @@ const SubscribersPage: React.FC = () => {
               <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search subscribers..."
-                className="pl-8"
+                className="pl-8 pr-8"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
@@ -108,16 +109,25 @@ const SubscribersPage: React.FC = () => {
                   if (!searchQuery) setIsSearchOpen(false);
                 }}
               />
+              {searchQuery && (
+                <button 
+                  className="absolute right-2 top-3" 
+                  onClick={() => {
+                    setSearchQuery("");
+                    setIsSearchOpen(false);
+                  }}
+                >
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
             </div>
           ) : (
-            <Button variant="outline" onClick={() => setIsSearchOpen(true)}>
-              <Search className="mr-2 h-4 w-4" />
-              Search
+            <Button size="icon" variant="outline" onClick={() => setIsSearchOpen(true)}>
+              <Search className="h-4 w-4" />
             </Button>
           )}
-          <Button onClick={() => setIsFormOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Subscriber
+          <Button size="icon" onClick={() => setIsFormOpen(true)}>
+            <PlusCircle className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -182,7 +192,7 @@ const SubscribersPage: React.FC = () => {
               setIsFormOpen(false);
               setSubscriberToEdit(null);
             }}
-            enablePhotoUpload={true} // Add this prop to enable photo upload
+            enablePhotoUpload={true}
           />
         </DialogContent>
       </Dialog>
