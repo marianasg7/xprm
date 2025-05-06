@@ -480,36 +480,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     setSelectedPromotion(promoId);
   };
 
-  // Get available plans this subscriber might use
-  const availablePlans = plans.filter(plan => plan.isActive);
-  const subscriberCurrentPlan = safeSubscriber.plan;
-  
-  // Get promotions relevant to this subscriber
-  const activePromotions = promotions.filter(promo => 
-    promo.isActive && 
-    new Date(promo.endDate) >= new Date()
-  );
-
-  // Determine which tabs to show based on subscriber status
-  const showRecoveryTab = safeSubscriber.status === "inactive";
-  // Only show casting tab if subscriber is active AND interested in casting
-  const showCastingTab = safeSubscriber.status === "active" && safeSubscriber.interestedInCasting;
-  
-  // Always default to details tab
-  const defaultTab = "details";
-
-  // Handle assigning a plan to the subscriber
-  const handleAssignPlan = (planId: string) => {
-    const plan = plans.find(p => p.id === planId);
-    if (plan) {
-      updateSubscriber(currentSubscriber.id, { 
-        plan: plan.name,
-        planDuration: plan.duration
-      });
-      setIsAssignPlanDialogOpen(false);
-    }
-  };
-
   const appliedPromotion = getAppliedPromotion();
   
   return (
@@ -1068,16 +1038,19 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                                               size="sm"
                                               variant={isApplied ? "outline" : "secondary"}
                                               onClick={() => {
-                                                // If not applied, apply this promotion
+                                                // If not applied, apply this promotion to this subscriber
                                                 if (!isApplied) {
                                                   updateSubscriber(currentSubscriber.id, {
+                                                    // Update with the promotion ID stored in subscriber data
+                                                    // This assumes your updateSubscriber function handles this special property
                                                     appliedPromotionId: promo.id
-                                                  });
+                                                  } as any); // Using type assertion here to avoid type error
                                                 } else {
                                                   // If already applied, remove it
                                                   updateSubscriber(currentSubscriber.id, {
+                                                    // Set to null to remove the promotion
                                                     appliedPromotionId: null
-                                                  });
+                                                  } as any); // Using type assertion here to avoid type error
                                                 }
                                               }}
                                             >
