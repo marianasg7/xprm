@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
@@ -74,13 +73,6 @@ import {
   CollapsibleContent, 
   CollapsibleTrigger 
 } from "@/components/ui/collapsible";
-
-interface SubscriberDetailViewProps {
-  subscriber: Subscriber;
-  onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}
 
 interface RecoveryNoteFormProps {
   initialData?: RecoveryNote;
@@ -281,6 +273,13 @@ const UnsubscribeForm: React.FC<UnsubscribeFormProps> = ({
   );
 };
 
+interface SubscriberDetailViewProps {
+  subscriber: Subscriber;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
 const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   subscriber,
   onClose,
@@ -406,6 +405,34 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     }
   };
 
+    // Create a color mapping for different fetish types
+    const getFetishColor = (fetish: string | undefined) => {
+      if (!fetish) return "bg-gray-100 text-gray-500";
+      
+      const fetishColors: {[key: string]: string} = {
+        "foot": "bg-blue-100 text-blue-700",
+        "leather": "bg-amber-100 text-amber-800",
+        "bdsm": "bg-purple-100 text-purple-700",
+        "latex": "bg-pink-100 text-pink-700",
+        "pee": "bg-yellow-100 text-yellow-700",
+        "findom": "bg-green-100 text-green-700",
+        "roleplay": "bg-indigo-100 text-indigo-700",
+        "sph": "bg-orange-100 text-orange-700",
+        "nylon": "bg-teal-100 text-teal-700"
+      };
+      
+      // Try to match the fetish to our predefined colors
+      const lowerFetish = fetish.toLowerCase();
+      for (const [key, value] of Object.entries(fetishColors)) {
+        if (lowerFetish.includes(key)) {
+          return value;
+        }
+      }
+      
+      // Default color if no match found
+      return "bg-violet-100 text-violet-700";
+    };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -523,7 +550,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Fansly Username</p>
                       <p className="text-sm text-muted-foreground">
-                        {safeSubscriber.fanslyUser || "N/A"}
+                        @{safeSubscriber.fanslyUser || "N/A"}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -534,9 +561,16 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Fetish</p>
-                      <p className="text-sm text-muted-foreground">
-                        {safeSubscriber.fetish || "N/A"}
-                      </p>
+                      {safeSubscriber.fetish ? (
+                        <Badge 
+                          variant="outline" 
+                          className={`${getFetishColor(safeSubscriber.fetish)} border-0`}
+                        >
+                          {safeSubscriber.fetish}
+                        </Badge>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">N/A</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Added on</p>
@@ -568,111 +602,107 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                   </div>
                 </TabsContent>
 
-                {showCastingTab && (
-                  <TabsContent value="casting" className="mt-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg">Casting Opportunities</CardTitle>
-                        <CardDescription>
-                          Casting opportunities this subscriber is participating in
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {subscriberCastings.length > 0 ? (
-                          <div className="space-y-4">
-                            {subscriberCastings.map((casting) => (
-                              <Card key={casting.id}>
-                                <CardContent className="p-4">
-                                  <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <h3 className="text-lg font-medium">{casting.theme}</h3>
+                <TabsContent value="casting" className="mt-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Casting Opportunities</CardTitle>
+                      <CardDescription>
+                        Casting opportunities this subscriber is participating in
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {subscriberCastings.length > 0 ? (
+                        <div className="space-y-4">
+                          {subscriberCastings.map((casting) => (
+                            <Card key={casting.id}>
+                              <CardContent className="p-4">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-medium">{casting.theme}</h3>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                      <span className="text-muted-foreground">Number of people:</span>
+                                      <span className="ml-2">{casting.numberOfPeople}</span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2 text-sm">
-                                      <div>
-                                        <span className="text-muted-foreground">Number of people:</span>
-                                        <span className="ml-2">{casting.numberOfPeople}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-muted-foreground">Opening:</span>
-                                        <span className="ml-2">{formatDate(casting.openingDate)}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-muted-foreground">Closing:</span>
-                                        <span className="ml-2">{formatDate(casting.closingDate)}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-muted-foreground">Recording:</span>
-                                        <span className="ml-2">{formatDate(casting.recordingDate)}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-muted-foreground">Posting:</span>
-                                        <span className="ml-2">{formatDate(casting.postingDate)}</span>
-                                      </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Opening:</span>
+                                      <span className="ml-2">{formatDate(casting.openingDate)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Closing:</span>
+                                      <span className="ml-2">{formatDate(casting.closingDate)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Recording:</span>
+                                      <span className="ml-2">{formatDate(casting.recordingDate)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Posting:</span>
+                                      <span className="ml-2">{formatDate(casting.postingDate)}</span>
                                     </div>
                                   </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-6">
-                            <p className="text-muted-foreground">
-                              No casting opportunities yet
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-2">
-                              This subscriber will appear in the casting selection pool
-                            </p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                )}
-
-                {showRecoveryTab && (
-                  <TabsContent value="recovery" className="mt-4">
-                    <Card>
-                      <CardHeader className="pb-2 flex flex-row justify-between items-center">
-                        <div>
-                          <CardTitle className="text-lg">Recovery Plan</CardTitle>
-                          <CardDescription>
-                            Notes for recovering this subscriber
-                          </CardDescription>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => setIsAddNoteDialogOpen(true)}
-                        >
-                          <PlusCircle className="h-4 w-4 mr-1" />
-                          Add Note
-                        </Button>
-                      </CardHeader>
-                      <CardContent>
-                        {safeSubscriber.recoveryNotes.length > 0 ? (
-                          <div className="space-y-4">
-                            {safeSubscriber.recoveryNotes.map((note) => (
-                              <Card key={note.id}>
-                                <CardContent className="p-4">
-                                  <div className="flex justify-between items-start">
-                                    <p className="whitespace-pre-wrap">
-                                      {note.content}
-                                    </p>
-                                    <div className="flex space-x-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => openEditNoteModal(note)}
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleDeleteNote(note.id)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
+                      ) : (
+                        <div className="text-center py-6">
+                          <p className="text-muted-foreground">
+                            No casting opportunities yet
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            This subscriber will appear in the casting selection pool
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="recovery" className="mt-4">
+                  <Card>
+                    <CardHeader className="pb-2 flex flex-row justify-between items-center">
+                      <div>
+                        <CardTitle className="text-lg">Recovery Plan</CardTitle>
+                        <CardDescription>
+                          Notes for recovering this subscriber
+                        </CardDescription>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => setIsAddNoteDialogOpen(true)}
+                      >
+                        <PlusCircle className="h-4 w-4 mr-1" />
+                        Add Note
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      {safeSubscriber.recoveryNotes.length > 0 ? (
+                        <div className="space-y-4">
+                          {safeSubscriber.recoveryNotes.map((note) => (
+                            <Card key={note.id}>
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start">
+                                  <p className="whitespace-pre-wrap">
+                                    {note.content}
+                                  </p>
+                                  <div className="flex space-x-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => openEditNoteModal(note)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteNote(note.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
                                   </div>
                                   <div className="text-xs text-muted-foreground mt-2">
                                     {formatTimeAgo(note.createdAt)}
@@ -699,7 +729,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                       </CardContent>
                     </Card>
                   </TabsContent>
-                )}
 
                 <TabsContent value="attachments" className="mt-4">
                   <Card>
@@ -907,164 +936,4 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                                           <div className="mt-2 flex gap-2">
                                             <Button 
                                               size="sm" 
-                                              variant="outline"
-                                              onClick={() => handleAssignPlan(plan.id)}
-                                              className="border-orange-300 bg-orange-100 hover:bg-orange-200"
-                                            >
-                                              Apply Promotion
-                                            </Button>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground mt-2">No active promotions</p>
-                              )}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Add Note Dialog */}
-      <Dialog
-        open={isAddNoteDialogOpen}
-        onOpenChange={setIsAddNoteDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Recovery Note</DialogTitle>
-            <DialogDescription>
-              Add a note to help with subscriber recovery
-            </DialogDescription>
-          </DialogHeader>
-          <RecoveryNoteForm
-            onSubmit={handleAddNote}
-            onCancel={() => setIsAddNoteDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Note Dialog */}
-      <Dialog
-        open={isEditNoteDialogOpen}
-        onOpenChange={setIsEditNoteDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Recovery Note</DialogTitle>
-            <DialogDescription>
-              Update your recovery plan note
-            </DialogDescription>
-          </DialogHeader>
-          <RecoveryNoteForm
-            initialData={currentNote || undefined}
-            onSubmit={handleEditNote}
-            onCancel={() => {
-              setIsEditNoteDialogOpen(false);
-              setCurrentNote(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Attachment Dialog */}
-      <Dialog
-        open={isAddAttachmentDialogOpen}
-        onOpenChange={setIsAddAttachmentDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Attachment</DialogTitle>
-            <DialogDescription>
-              Add a new attachment for this subscriber
-            </DialogDescription>
-          </DialogHeader>
-          <AttachmentForm
-            onSubmit={handleAddAttachment}
-            onCancel={() => setIsAddAttachmentDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Unsubscribe Dialog */}
-      <Dialog
-        open={isUnsubscribeDialogOpen}
-        onOpenChange={setIsUnsubscribeDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Mark as Unsubscribed</DialogTitle>
-            <DialogDescription>
-              This will mark the subscriber as inactive
-            </DialogDescription>
-          </DialogHeader>
-          <UnsubscribeForm
-            onSubmit={handleUnsubscribe}
-            onCancel={() => setIsUnsubscribeDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Assign Plan Dialog */}
-      <Dialog
-        open={isAssignPlanDialogOpen}
-        onOpenChange={setIsAssignPlanDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign Plan to Subscriber</DialogTitle>
-            <DialogDescription>
-              Select a plan to assign to this subscriber
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="plan-select">Plan</Label>
-              <Select
-                value={selectedPlan || undefined}
-                onValueChange={setSelectedPlan}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availablePlans.map(plan => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name} - ${plan.price} / {plan.duration} months
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAssignPlanDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => selectedPlan && handleAssignPlan(selectedPlan)}
-              disabled={!selectedPlan}
-            >
-              Assign Plan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default SubscriberDetailView;
+                                              variant="
