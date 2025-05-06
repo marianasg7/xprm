@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
@@ -405,33 +406,33 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     }
   };
 
-    // Create a color mapping for different fetish types
-    const getFetishColor = (fetish: string | undefined) => {
-      if (!fetish) return "bg-gray-100 text-gray-500";
-      
-      const fetishColors: {[key: string]: string} = {
-        "foot": "bg-blue-100 text-blue-700",
-        "leather": "bg-amber-100 text-amber-800",
-        "bdsm": "bg-purple-100 text-purple-700",
-        "latex": "bg-pink-100 text-pink-700",
-        "pee": "bg-yellow-100 text-yellow-700",
-        "findom": "bg-green-100 text-green-700",
-        "roleplay": "bg-indigo-100 text-indigo-700",
-        "sph": "bg-orange-100 text-orange-700",
-        "nylon": "bg-teal-100 text-teal-700"
-      };
-      
-      // Try to match the fetish to our predefined colors
-      const lowerFetish = fetish.toLowerCase();
-      for (const [key, value] of Object.entries(fetishColors)) {
-        if (lowerFetish.includes(key)) {
-          return value;
-        }
-      }
-      
-      // Default color if no match found
-      return "bg-violet-100 text-violet-700";
+  // Create a color mapping for different fetish types
+  const getFetishColor = (fetish: string | undefined) => {
+    if (!fetish) return "bg-gray-100 text-gray-500";
+    
+    const fetishColors: {[key: string]: string} = {
+      "foot": "bg-blue-100 text-blue-700",
+      "leather": "bg-amber-100 text-amber-800",
+      "bdsm": "bg-purple-100 text-purple-700",
+      "latex": "bg-pink-100 text-pink-700",
+      "pee": "bg-yellow-100 text-yellow-700",
+      "findom": "bg-green-100 text-green-700",
+      "roleplay": "bg-indigo-100 text-indigo-700",
+      "sph": "bg-orange-100 text-orange-700",
+      "nylon": "bg-teal-100 text-teal-700"
     };
+    
+    // Try to match the fetish to our predefined colors
+    const lowerFetish = fetish.toLowerCase();
+    for (const [key, value] of Object.entries(fetishColors)) {
+      if (lowerFetish.includes(key)) {
+        return value;
+      }
+    }
+    
+    // Default color if no match found
+    return "bg-violet-100 text-violet-700";
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -602,107 +603,111 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                   </div>
                 </TabsContent>
 
-                <TabsContent value="casting" className="mt-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Casting Opportunities</CardTitle>
-                      <CardDescription>
-                        Casting opportunities this subscriber is participating in
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {subscriberCastings.length > 0 ? (
-                        <div className="space-y-4">
-                          {subscriberCastings.map((casting) => (
-                            <Card key={casting.id}>
-                              <CardContent className="p-4">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-medium">{casting.theme}</h3>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2 text-sm">
-                                    <div>
-                                      <span className="text-muted-foreground">Number of people:</span>
-                                      <span className="ml-2">{casting.numberOfPeople}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-muted-foreground">Opening:</span>
-                                      <span className="ml-2">{formatDate(casting.openingDate)}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-muted-foreground">Closing:</span>
-                                      <span className="ml-2">{formatDate(casting.closingDate)}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-muted-foreground">Recording:</span>
-                                      <span className="ml-2">{formatDate(casting.recordingDate)}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-muted-foreground">Posting:</span>
-                                      <span className="ml-2">{formatDate(casting.postingDate)}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-6">
-                          <p className="text-muted-foreground">
-                            No casting opportunities yet
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            This subscriber will appear in the casting selection pool
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="recovery" className="mt-4">
-                  <Card>
-                    <CardHeader className="pb-2 flex flex-row justify-between items-center">
-                      <div>
-                        <CardTitle className="text-lg">Recovery Plan</CardTitle>
+                {showCastingTab && (
+                  <TabsContent value="casting" className="mt-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Casting Opportunities</CardTitle>
                         <CardDescription>
-                          Notes for recovering this subscriber
+                          Casting opportunities this subscriber is participating in
                         </CardDescription>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsAddNoteDialogOpen(true)}
-                      >
-                        <PlusCircle className="h-4 w-4 mr-1" />
-                        Add Note
-                      </Button>
-                    </CardHeader>
-                    <CardContent>
-                      {safeSubscriber.recoveryNotes.length > 0 ? (
-                        <div className="space-y-4">
-                          {safeSubscriber.recoveryNotes.map((note) => (
-                            <Card key={note.id}>
-                              <CardContent className="p-4">
-                                <div className="flex justify-between items-start">
-                                  <p className="whitespace-pre-wrap">
-                                    {note.content}
-                                  </p>
-                                  <div className="flex space-x-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => openEditNoteModal(note)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeleteNote(note.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                      </CardHeader>
+                      <CardContent>
+                        {subscriberCastings.length > 0 ? (
+                          <div className="space-y-4">
+                            {subscriberCastings.map((casting) => (
+                              <Card key={casting.id}>
+                                <CardContent className="p-4">
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <h3 className="text-lg font-medium">{casting.theme}</h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                      <div>
+                                        <span className="text-muted-foreground">Number of people:</span>
+                                        <span className="ml-2">{casting.numberOfPeople}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">Opening:</span>
+                                        <span className="ml-2">{formatDate(casting.openingDate)}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">Closing:</span>
+                                        <span className="ml-2">{formatDate(casting.closingDate)}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">Recording:</span>
+                                        <span className="ml-2">{formatDate(casting.recordingDate)}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">Posting:</span>
+                                        <span className="ml-2">{formatDate(casting.postingDate)}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6">
+                            <p className="text-muted-foreground">
+                              No casting opportunities yet
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              This subscriber will appear in the casting selection pool
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )}
+
+                {showRecoveryTab && (
+                  <TabsContent value="recovery" className="mt-4">
+                    <Card>
+                      <CardHeader className="pb-2 flex flex-row justify-between items-center">
+                        <div>
+                          <CardTitle className="text-lg">Recovery Plan</CardTitle>
+                          <CardDescription>
+                            Notes for recovering this subscriber
+                          </CardDescription>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => setIsAddNoteDialogOpen(true)}
+                        >
+                          <PlusCircle className="h-4 w-4 mr-1" />
+                          Add Note
+                        </Button>
+                      </CardHeader>
+                      <CardContent>
+                        {safeSubscriber.recoveryNotes.length > 0 ? (
+                          <div className="space-y-4">
+                            {safeSubscriber.recoveryNotes.map((note) => (
+                              <Card key={note.id}>
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start">
+                                    <p className="whitespace-pre-wrap">
+                                      {note.content}
+                                    </p>
+                                    <div className="flex space-x-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => openEditNoteModal(note)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleDeleteNote(note.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </div>
                                   <div className="text-xs text-muted-foreground mt-2">
                                     {formatTimeAgo(note.createdAt)}
@@ -729,6 +734,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                       </CardContent>
                     </Card>
                   </TabsContent>
+                )}
 
                 <TabsContent value="attachments" className="mt-4">
                   <Card>
@@ -932,8 +938,149 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                                             </p>
                                           </div>
                                         </div>
-                                        {plan && (
-                                          <div className="mt-2 flex gap-2">
-                                            <Button 
-                                              size="sm" 
-                                              variant="
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground mt-2">No active promotions</p>
+                              )}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Note Dialog */}
+      <Dialog open={isAddNoteDialogOpen} onOpenChange={setIsAddNoteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Recovery Note</DialogTitle>
+            <DialogDescription>
+              Add a note for recovering this subscriber.
+            </DialogDescription>
+          </DialogHeader>
+          <RecoveryNoteForm
+            onSubmit={handleAddNote}
+            onCancel={() => setIsAddNoteDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Note Dialog */}
+      <Dialog open={isEditNoteDialogOpen} onOpenChange={setIsEditNoteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Recovery Note</DialogTitle>
+          </DialogHeader>
+          {currentNote && (
+            <RecoveryNoteForm
+              initialData={currentNote}
+              onSubmit={handleEditNote}
+              onCancel={() => setIsEditNoteDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Attachment Dialog */}
+      <Dialog
+        open={isAddAttachmentDialogOpen}
+        onOpenChange={setIsAddAttachmentDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Attachment</DialogTitle>
+            <DialogDescription>
+              Add a file attachment for this subscriber.
+            </DialogDescription>
+          </DialogHeader>
+          <AttachmentForm
+            onSubmit={handleAddAttachment}
+            onCancel={() => setIsAddAttachmentDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Unsubscribe Dialog */}
+      <Dialog
+        open={isUnsubscribeDialogOpen}
+        onOpenChange={setIsUnsubscribeDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsubscribe Subscriber</DialogTitle>
+            <DialogDescription>
+              Set the date when this subscriber will be unsubscribed.
+            </DialogDescription>
+          </DialogHeader>
+          <UnsubscribeForm
+            onSubmit={handleUnsubscribe}
+            onCancel={() => setIsUnsubscribeDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Plan Dialog */}
+      <Dialog
+        open={isAssignPlanDialogOpen}
+        onOpenChange={setIsAssignPlanDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Plan</DialogTitle>
+            <DialogDescription>
+              Select a plan to assign to this subscriber.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {availablePlans.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {availablePlans.map((plan) => (
+                  <div key={plan.id} className="border rounded-md p-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-medium">{plan.name}</h4>
+                        <p className="text-sm text-muted-foreground">{plan.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">${plan.price}</p>
+                        <p className="text-xs text-muted-foreground">{plan.duration} months</p>
+                      </div>
+                    </div>
+                    <Button
+                      className="w-full mt-2"
+                      onClick={() => handleAssignPlan(plan.id)}
+                      disabled={safeSubscriber.plan === plan.name}
+                    >
+                      {safeSubscriber.plan === plan.name ? "Current Plan" : "Select Plan"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground">No plans available</p>
+            )}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setIsAssignPlanDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default SubscriberDetailView;
