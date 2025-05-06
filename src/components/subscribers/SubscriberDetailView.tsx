@@ -314,6 +314,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   const [currentSubscriber, setCurrentSubscriber] = useState<Subscriber>(subscriber);
   const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [selectedPromotion, setSelectedPromotion] = useState<string | null>(null);
 
   // Find the latest subscriber data whenever the subscriber ID changes or subscribers list changes
   useEffect(() => {
@@ -451,6 +452,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     
     const fetishColors: {[key: string]: string} = {
       "foot": "bg-blue-100 text-blue-700",
+      "feet": "bg-blue-100 text-blue-700",
       "leather": "bg-amber-100 text-amber-800",
       "bdsm": "bg-purple-100 text-purple-700",
       "latex": "bg-pink-100 text-pink-700",
@@ -471,6 +473,41 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     
     // Default color if no match found
     return "bg-violet-100 text-violet-700";
+  };
+
+  // Handle assigning a promotion to the subscriber
+  const handleAssignPromotion = (promoId: string) => {
+    setSelectedPromotion(promoId);
+  };
+
+  // Get available plans this subscriber might use
+  const availablePlans = plans.filter(plan => plan.isActive);
+  const subscriberCurrentPlan = safeSubscriber.plan;
+  
+  // Get promotions relevant to this subscriber
+  const activePromotions = promotions.filter(promo => 
+    promo.isActive && 
+    new Date(promo.endDate) >= new Date()
+  );
+
+  // Determine which tabs to show based on subscriber status
+  const showRecoveryTab = safeSubscriber.status === "inactive";
+  // Only show casting tab if subscriber is active AND interested in casting
+  const showCastingTab = safeSubscriber.status === "active" && safeSubscriber.interestedInCasting;
+  
+  // Always default to details tab
+  const defaultTab = "details";
+
+  // Handle assigning a plan to the subscriber
+  const handleAssignPlan = (planId: string) => {
+    const plan = plans.find(p => p.id === planId);
+    if (plan) {
+      updateSubscriber(currentSubscriber.id, { 
+        plan: plan.name,
+        planDuration: plan.duration
+      });
+      setIsAssignPlanDialogOpen(false);
+    }
   };
 
   const appliedPromotion = getAppliedPromotion();
@@ -510,6 +547,9 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 </div>
                 <h3 className="mt-2 text-xl font-bold">
                   {safeSubscriber.nickname || safeSubscriber.name}
+                  {safeSubscriber.interestedInCasting && (
+                    <span className="inline ml-2 text-amber-500">🎬</span>
+                  )}
                 </h3>
                 {safeSubscriber.nickname && safeSubscriber.name !== safeSubscriber.nickname && (
                   <p className="text-muted-foreground">{safeSubscriber.name}</p>
@@ -595,6 +635,20 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 <TabsContent value="details" className="mt-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
+                      <p className="text-sm font-medium">Name</p>
+                      <p className="text-sm text-muted-foreground">
+                        {safeSubscriber.name}
+                      </p>
+                    </div>
+                    {safeSubscriber.nickname && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Nickname</p>
+                        <p className="text-sm text-muted-foreground">
+                          {safeSubscriber.nickname}
+                        </p>
+                      </div>
+                    )}
+                    <div className="space-y-1">
                       <p className="text-sm font-medium">Email</p>
                       <p className="text-sm text-muted-foreground">
                         {safeSubscriber.email}
@@ -609,7 +663,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Fansly User</p>
                       <p className="text-sm text-muted-foreground">
-                        @{safeSubscriber.fanslyUser || "N/A"}
+                        {safeSubscriber.fanslyUser ? `@${safeSubscriber.fanslyUser}` : "N/A"}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -891,6 +945,24 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                               {safeSubscriber.planDuration} months
                             </p>
                           </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">End Date</p>
+                            <p className="text-sm text-muted-foreground">
+                              {calculatePlanEndDate()}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">Promotion</p>
+                            <p className="text-sm">
+                              {appliedPromotion ? (
+                                <Badge className="bg-orange-100 text-orange-700 border-0">
+                                  {appliedPromotion.name} ({appliedPromotion.discountPercentage}% OFF)
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">No promotion applied</span>
+                              )}
+                            </p>
+                          </div>
                         </div>
                         
                         <Separator />
@@ -966,6 +1038,9 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                                   {activePromotions.map((promo) => {
                                     // Find associated plan
                                     const plan = plans.find(p => p.id === promo.planId);
+                                    const isCurrentPlanPromotion = plan?.name === safeSubscriber.plan;
+                                    const isApplied = appliedPromotion?.id === promo.id;
+                                    
                                     return (
                                       <div key={promo.id} className="p-3 border rounded-md border-orange-200 bg-orange-50">
                                         <div className="flex justify-between items-center">
@@ -987,6 +1062,29 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                                             </p>
                                           </div>
                                         </div>
+                                        {isCurrentPlanPromotion && (
+                                          <div className="mt-2">
+                                            <Button
+                                              size="sm"
+                                              variant={isApplied ? "outline" : "secondary"}
+                                              onClick={() => {
+                                                // If not applied, apply this promotion
+                                                if (!isApplied) {
+                                                  updateSubscriber(currentSubscriber.id, {
+                                                    appliedPromotionId: promo.id
+                                                  });
+                                                } else {
+                                                  // If already applied, remove it
+                                                  updateSubscriber(currentSubscriber.id, {
+                                                    appliedPromotionId: null
+                                                  });
+                                                }
+                                              }}
+                                            >
+                                              {isApplied ? "Remove Promotion" : "Apply Promotion"}
+                                            </Button>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}

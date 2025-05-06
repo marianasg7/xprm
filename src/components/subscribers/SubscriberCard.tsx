@@ -18,6 +18,7 @@ export default function SubscriberCard({ subscriber, onClick }: SubscriberCardPr
     
     const fetishColors: {[key: string]: string} = {
       "foot": "bg-blue-100 text-blue-700",
+      "feet": "bg-blue-100 text-blue-700",
       "leather": "bg-amber-100 text-amber-800",
       "bdsm": "bg-purple-100 text-purple-700",
       "latex": "bg-pink-100 text-pink-700",
@@ -76,21 +77,23 @@ export default function SubscriberCard({ subscriber, onClick }: SubscriberCardPr
       </CardHeader>
       <CardContent>
         <div className="grid gap-2 text-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-muted-foreground">Size: </span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Size:</span>
               <span>{subscriber.size || 'N/A'}</span>
-              {subscriber.fetish && (
-                <span className="ml-2">
-                  <Badge 
-                    variant="outline" 
-                    className={`${getFetishColor(subscriber.fetish)} border-0 ml-1`}
-                  >
-                    {subscriber.fetish}
-                  </Badge>
-                </span>
-              )}
             </div>
+            
+            {subscriber.fetish && (
+              <div className="flex items-center">
+                <span className="text-muted-foreground">Fetish:</span>
+                <Badge 
+                  variant="outline" 
+                  className={`${getFetishColor(subscriber.fetish)} border-0 ml-1`}
+                >
+                  {subscriber.fetish}
+                </Badge>
+              </div>
+            )}
           </div>
           
           <div className="mt-2">
