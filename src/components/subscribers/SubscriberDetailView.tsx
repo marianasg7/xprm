@@ -13,6 +13,7 @@ import {
   Tags,
   ChevronDown,
   ChevronUp,
+  Circle,
 } from "lucide-react";
 import { Subscriber, RecoveryNote } from "@/types/types";
 import { Button } from "@/components/ui/button";
