@@ -14,8 +14,9 @@ import {
   ChevronDown,
   ChevronUp,
   Circle,
+  Film,
 } from "lucide-react";
-import { Subscriber, RecoveryNote } from "@/types/types";
+import { Subscriber, RecoveryNote, Attachment } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -311,6 +312,8 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   const [isPlansExpanded, setIsPlansExpanded] = useState(false);
   const [isPromotionsExpanded, setIsPromotionsExpanded] = useState(false);
   const [currentSubscriber, setCurrentSubscriber] = useState<Subscriber>(subscriber);
+  const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   // Find the latest subscriber data whenever the subscriber ID changes or subscribers list changes
   useEffect(() => {
@@ -375,6 +378,21 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     setCurrentNote(note);
     setIsEditNoteDialogOpen(true);
   };
+  
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const fileUrl = URL.createObjectURL(file);
+      setPhotoUrl(fileUrl);
+    }
+  };
+
+  const handleSavePhoto = () => {
+    if (photoUrl) {
+      updateSubscriber(currentSubscriber.id, { photoUrl });
+      setIsPhotoDialogOpen(false);
+    }
+  };
 
   // Get all plans this subscriber might use
   const availablePlans = plans.filter(plan => plan.isActive);
@@ -406,6 +424,27 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     }
   };
 
+  // Calculate plan end date based on subscription date and plan duration
+  const calculatePlanEndDate = () => {
+    if (!safeSubscriber.subscriptionDate || !safeSubscriber.planDuration) {
+      return "N/A";
+    }
+    
+    const startDate = new Date(safeSubscriber.subscriptionDate);
+    const endDate = new Date(startDate);
+    endDate.setMonth(startDate.getMonth() + safeSubscriber.planDuration);
+    
+    return formatDate(endDate);
+  };
+
+  // Find any promotions applied to this subscriber's plan
+  const getAppliedPromotion = () => {
+    const subscriberPlan = plans.find(p => p.name === safeSubscriber.plan);
+    if (!subscriberPlan) return null;
+    
+    return activePromotions.find(p => p.planId === subscriberPlan.id);
+  };
+
   // Create a color mapping for different fetish types
   const getFetishColor = (fetish: string | undefined) => {
     if (!fetish) return "bg-gray-100 text-gray-500";
@@ -434,6 +473,8 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     return "bg-violet-100 text-violet-700";
   };
 
+  const appliedPromotion = getAppliedPromotion();
+  
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -448,18 +489,30 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
           <div className="flex flex-col md:flex-row gap-6">
             <div className="md:w-1/3">
               <div className="flex flex-col items-center p-4 border rounded-lg">
-                <Avatar className="h-20 w-20">
-                  {safeSubscriber.photoUrl ? (
-                    <AvatarImage src={safeSubscriber.photoUrl} alt={safeSubscriber.name} />
-                  ) : (
-                    <AvatarFallback className="text-2xl bg-primary text-white">
-                      {getInitials(safeSubscriber.name)}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <h3 className="mt-2 text-xl font-bold">{safeSubscriber.name}</h3>
-                {safeSubscriber.nickname && (
-                  <p className="text-muted-foreground">@{safeSubscriber.nickname}</p>
+                <div className="relative">
+                  <Avatar className="h-20 w-20">
+                    {safeSubscriber.photoUrl ? (
+                      <AvatarImage src={safeSubscriber.photoUrl} alt={safeSubscriber.name} />
+                    ) : (
+                      <AvatarFallback className="text-2xl bg-primary text-white">
+                        {getInitials(safeSubscriber.name)}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="absolute bottom-0 right-0 h-6 w-6 rounded-full bg-background" 
+                    onClick={() => setIsPhotoDialogOpen(true)}
+                  >
+                    <Camera className="h-3 w-3" />
+                  </Button>
+                </div>
+                <h3 className="mt-2 text-xl font-bold">
+                  {safeSubscriber.nickname || safeSubscriber.name}
+                </h3>
+                {safeSubscriber.nickname && safeSubscriber.name !== safeSubscriber.nickname && (
+                  <p className="text-muted-foreground">{safeSubscriber.name}</p>
                 )}
                 <div className="flex items-center mt-2">
                   {safeSubscriber.status === "active" ? (
@@ -469,7 +522,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                   )}
                   {safeSubscriber.interestedInCasting && safeSubscriber.status === "active" && (
                     <Badge className="ml-2 bg-orange-500" variant="outline">
-                      <Camera className="h-3 w-3 mr-1" />
+                      🎬
                     </Badge>
                   )}
                 </div>
@@ -482,7 +535,14 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 <CardContent className="text-sm space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Plan:</span>
-                    <span className="font-medium">{safeSubscriber.plan || "None"}</span>
+                    <span className="font-medium">
+                      {safeSubscriber.plan || "None"}
+                      {appliedPromotion && (
+                        <Badge className="ml-2 bg-orange-100 text-orange-700 border-0">
+                          {appliedPromotion.discountPercentage}% OFF
+                        </Badge>
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Duration:</span>
@@ -492,12 +552,10 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     <span className="text-muted-foreground">Start Date:</span>
                     <span>{formatDate(safeSubscriber.subscriptionDate)}</span>
                   </div>
-                  {safeSubscriber.endSubscriptionDate && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">End Date:</span>
-                      <span>{formatDate(safeSubscriber.endSubscriptionDate)}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">End Date:</span>
+                    <span>{calculatePlanEndDate()}</span>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -549,7 +607,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm font-medium">Fansly Username</p>
+                      <p className="text-sm font-medium">Fansly User</p>
                       <p className="text-sm text-muted-foreground">
                         @{safeSubscriber.fanslyUser || "N/A"}
                       </p>
@@ -795,14 +853,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                           <p className="text-muted-foreground">
                             No attachments yet
                           </p>
-                          <Button
-                            variant="outline"
-                            className="mt-2"
-                            onClick={() => setIsAddAttachmentDialogOpen(true)}
-                          >
-                            <Paperclip className="h-4 w-4 mr-2" />
-                            Add First Attachment
-                          </Button>
                         </div>
                       )}
                     </CardContent>
@@ -823,7 +873,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                         onClick={() => setIsAssignPlanDialogOpen(true)}
                       >
                         <PlusCircle className="h-4 w-4 mr-1" />
-                        Assign Plan
+                        Assign Plan/Promo
                       </Button>
                     </CardHeader>
                     <CardContent>
@@ -895,7 +945,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                             </CollapsibleContent>
                           </Collapsible>
                           
-                          {/* Add Promotions Collapsible */}
                           <Collapsible 
                             open={isPromotionsExpanded} 
                             onOpenChange={setIsPromotionsExpanded}
@@ -1074,6 +1123,56 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 onClick={() => setIsAssignPlanDialogOpen(false)}
               >
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Photo Dialog */}
+      <Dialog
+        open={isPhotoDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsPhotoDialogOpen(false);
+            setPhotoUrl(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Profile Photo</DialogTitle>
+            <DialogDescription>
+              Upload a photo for this subscriber.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <Label htmlFor="photo">Select Photo</Label>
+            <Input id="photo" type="file" accept="image/*" onChange={handlePhotoChange} />
+            
+            {photoUrl && (
+              <div className="flex justify-center mt-4">
+                <Avatar className="h-32 w-32">
+                  <AvatarImage src={photoUrl} />
+                  <AvatarFallback className="text-4xl bg-primary text-white">
+                    {getInitials(safeSubscriber.name)}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsPhotoDialogOpen(false);
+                  setPhotoUrl(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSavePhoto} disabled={!photoUrl}>
+                Save Photo
               </Button>
             </div>
           </div>

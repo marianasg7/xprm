@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, getInitials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, Circle } from "lucide-react";
+import { Circle, Film } from "lucide-react";
 
 interface SubscriberCardProps {
   subscriber: Subscriber;
@@ -61,7 +61,7 @@ export default function SubscriberCard({ subscriber, onClick }: SubscriberCardPr
               <CardTitle className="text-lg">
                 {subscriber.nickname || subscriber.name}
                 {subscriber.interestedInCasting && (
-                  <Camera className="h-4 w-4 inline ml-2 text-amber-500" />
+                  <span className="inline ml-2 text-amber-500">🎬</span>
                 )}
               </CardTitle>
               <div className="text-sm text-muted-foreground">
@@ -77,22 +77,20 @@ export default function SubscriberCard({ subscriber, onClick }: SubscriberCardPr
       <CardContent>
         <div className="grid gap-2 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Size:</span>
-            <span>{subscriber.size || 'N/A'}</span>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Fetish:</span>
-            {subscriber.fetish ? (
-              <Badge 
-                variant="outline" 
-                className={`${getFetishColor(subscriber.fetish)} border-0`}
-              >
-                {subscriber.fetish}
-              </Badge>
-            ) : (
-              <span>N/A</span>
-            )}
+            <div>
+              <span className="text-muted-foreground">Size: </span>
+              <span>{subscriber.size || 'N/A'}</span>
+              {subscriber.fetish && (
+                <span className="ml-2">
+                  <Badge 
+                    variant="outline" 
+                    className={`${getFetishColor(subscriber.fetish)} border-0 ml-1`}
+                  >
+                    {subscriber.fetish}
+                  </Badge>
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="mt-2">

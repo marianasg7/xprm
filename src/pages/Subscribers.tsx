@@ -94,7 +94,7 @@ const SubscribersPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
+      <div className="flex flex-col sm:flex-row gap-4 justify-end">
         <div className="flex gap-2">
           {isSearchOpen ? (
             <div className="relative">
