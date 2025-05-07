@@ -377,6 +377,26 @@ const ProjectsPage: React.FC = () => {
     }
   };
 
+  // Add the missing handleDeleteEquipment function
+  const handleDeleteEquipment = () => {
+    if (equipmentToDelete) {
+      setEquipment(equipment.filter(equip => equip.id !== equipmentToDelete));
+      setEquipmentToDelete(null);
+      
+      // Remove equipment reference from projects
+      const updatedProjects = projects.map(project => ({
+        ...project,
+        equipmentIds: project.equipmentIds.filter(id => id !== equipmentToDelete)
+      }));
+      setProjects(updatedProjects);
+      
+      toast({
+        title: "Equipment deleted",
+        description: "The equipment has been deleted.",
+      });
+    }
+  };
+
   // Image handling
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
