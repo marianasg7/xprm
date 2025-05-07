@@ -465,7 +465,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     
     const hash = Array.from(lowerFetish).reduce((acc, char) => {
       return char.charCodeAt(0) + ((acc << 5) - acc);
-    }, 0);
+    }, 0);\
     
     const hue = Math.abs(hash) % 360;
     return `bg-[hsl(${hue},85%,90%)] text-[hsl(${hue},85%,30%)]`;
