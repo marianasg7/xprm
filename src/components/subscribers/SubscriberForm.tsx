@@ -57,6 +57,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     initialData?.photoUrl || null
   );
+  const [selectedPromotion, setSelectedPromotion] = useState<string>(initialData?.promotion || "");
 
   // Modified fetish options with consistent colors
   const fetchFetishColors = (fetish: string) => {
@@ -137,8 +138,23 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
 
   const handleSubmit = (data: z.infer<typeof formSchema>) => {
     const subscriberData: Omit<Subscriber, "id" | "createdAt"> = {
-      ...data,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      nickname: data.nickname || "",
+      size: data.size || "",
+      fetish: data.fetish || "",
+      fanslyUser: data.fanslyUser || "",
+      subscriptionDate: data.subscriptionDate,
+      status: data.status,
+      plan: data.plan,
+      planDuration: data.planDuration,
+      interestedInCasting: data.interestedInCasting,
       tags: allTags.filter((tag) => selectedTags.includes(tag.id)),
+      recoveryNotes: data.recoveryNotes,
+      attachments: data.attachments,
+      castingParticipations: data.castingParticipations,
+      endSubscriptionDate: initialData?.endSubscriptionDate,
     };
 
     if (photoFile) {
@@ -367,33 +383,27 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
               )}
             />
 
-            {/* Promotion field replacing Duration */}
-            <FormField
-              control={form.control}
-              name="promotion"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Promotion</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a promotion (optional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      <SelectItem value="summer_promo">Summer Sale (20% OFF)</SelectItem>
-                      <SelectItem value="new_user">New User (15% OFF)</SelectItem>
-                      <SelectItem value="loyalty">Loyalty (10% OFF)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Promotion field (not directly tied to form) */}
+            <FormItem>
+              <FormLabel>Promotion</FormLabel>
+              <Select
+                onValueChange={setSelectedPromotion}
+                defaultValue={selectedPromotion}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a promotion (optional)" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="summer_promo">Summer Sale (20% OFF)</SelectItem>
+                  <SelectItem value="new_user">New User (15% OFF)</SelectItem>
+                  <SelectItem value="loyalty">Loyalty (10% OFF)</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
 
             {/* Plan Duration is hidden and calculated automatically */}
             <input type="hidden" {...form.register("planDuration")} value="1" />

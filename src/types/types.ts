@@ -1,4 +1,3 @@
-
 export type Tag = {
   id: string;
   name: string;
@@ -41,6 +40,7 @@ export interface Subscriber {
   attachments: Attachment[];
   castingParticipations: string[]; // IDs of castings the subscriber is selected for
   createdAt: Date;
+  promotion?: string; // Optional promotion code applied to the subscription
 }
 
 export interface Casting {

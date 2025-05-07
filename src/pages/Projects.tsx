@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -183,7 +182,11 @@ const ProjectsPage: React.FC = () => {
   const handleAddProject = (data: z.infer<typeof projectFormSchema>) => {
     const newProject: Project = {
       id: nanoid(),
-      ...data,
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      locationDetails: data.locationDetails || "",
+      imageUrl: data.imageUrl,
       createdAt: new Date(),
       updatedAt: new Date(),
       ideasIds: [],
@@ -205,7 +208,15 @@ const ProjectsPage: React.FC = () => {
     if (projectToEdit) {
       const updatedProjects = projects.map((project) => 
         project.id === projectToEdit.id ? 
-        { ...project, ...data, updatedAt: new Date() } : 
+        { 
+          ...project, 
+          title: data.title,
+          description: data.description,
+          status: data.status,
+          locationDetails: data.locationDetails || "",
+          imageUrl: data.imageUrl,
+          updatedAt: new Date() 
+        } : 
         project
       );
       
@@ -250,7 +261,10 @@ const ProjectsPage: React.FC = () => {
   const handleAddIdea = (data: z.infer<typeof ideaFormSchema>) => {
     const newIdea: Idea = {
       id: nanoid(),
-      ...data,
+      title: data.title,
+      description: data.description,
+      tags: data.tags || [],
+      imageUrl: data.imageUrl,
       createdAt: new Date(),
       updatedAt: new Date(),
       projectIds: [],
@@ -270,7 +284,14 @@ const ProjectsPage: React.FC = () => {
     if (ideaToEdit) {
       const updatedIdeas = ideas.map((idea) => 
         idea.id === ideaToEdit.id ? 
-        { ...idea, ...data, updatedAt: new Date() } : 
+        { 
+          ...idea,
+          title: data.title,
+          description: data.description,
+          tags: data.tags || [],
+          imageUrl: data.imageUrl,
+          updatedAt: new Date() 
+        } : 
         idea
       );
       
@@ -309,7 +330,12 @@ const ProjectsPage: React.FC = () => {
   const handleAddEquipment = (data: z.infer<typeof equipmentFormSchema>) => {
     const newEquipment: Equipment = {
       id: nanoid(),
-      ...data,
+      name: data.name,
+      description: data.description || "",
+      type: data.type,
+      quantity: data.quantity,
+      location: data.location || "",
+      imageUrl: data.imageUrl,
       projectIds: [],
     };
 
@@ -327,7 +353,15 @@ const ProjectsPage: React.FC = () => {
     if (equipmentToEdit) {
       const updatedEquipment = equipment.map((equip) => 
         equip.id === equipmentToEdit.id ? 
-        { ...equip, ...data } : 
+        { 
+          ...equip,
+          name: data.name,
+          description: data.description || "",
+          type: data.type,
+          quantity: data.quantity,
+          location: data.location || "",
+          imageUrl: data.imageUrl 
+        } : 
         equip
       );
       
@@ -339,25 +373,6 @@ const ProjectsPage: React.FC = () => {
       toast({
         title: "Equipment updated",
         description: `Equipment "${data.name}" has been updated.`,
-      });
-    }
-  };
-
-  const handleDeleteEquipment = () => {
-    if (equipmentToDelete) {
-      setEquipment(equipment.filter(equip => equip.id !== equipmentToDelete));
-      setEquipmentToDelete(null);
-
-      // Remove equipment reference from projects
-      const updatedProjects = projects.map(project => ({
-        ...project,
-        equipmentIds: project.equipmentIds.filter(id => id !== equipmentToDelete)
-      }));
-      setProjects(updatedProjects);
-      
-      toast({
-        title: "Equipment deleted",
-        description: "The equipment has been deleted.",
       });
     }
   };
