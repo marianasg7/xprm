@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
@@ -465,7 +466,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     
     const hash = Array.from(lowerFetish).reduce((acc, char) => {
       return char.charCodeAt(0) + ((acc << 5) - acc);
-    }, 0);\
+    }, 0);
     
     const hue = Math.abs(hash) % 360;
     return `bg-[hsl(${hue},85%,90%)] text-[hsl(${hue},85%,30%)]`;
@@ -946,3 +947,158 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
               </Tabs>
             </div>
           </div>
+        </div>
+
+        {/* Photo dialog */}
+        <Dialog open={isPhotoDialogOpen} onOpenChange={setIsPhotoDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Photo</DialogTitle>
+              <DialogDescription>
+                Choose a photo to upload for this subscriber.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt="Preview"
+                    className="w-32 h-32 object-cover rounded-full"
+                  />
+                ) : (
+                  <Avatar className="w-32 h-32">
+                    <AvatarFallback className="text-4xl bg-primary text-white">
+                      {getInitials(safeSubscriber.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+              <div>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsPhotoDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSavePhoto} disabled={!photoUrl}>
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Note Dialog */}
+        <Dialog open={isAddNoteDialogOpen} onOpenChange={setIsAddNoteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Recovery Note</DialogTitle>
+            </DialogHeader>
+            <RecoveryNoteForm
+              onSubmit={handleAddNote}
+              onCancel={() => setIsAddNoteDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Note Dialog */}
+        <Dialog open={isEditNoteDialogOpen} onOpenChange={setIsEditNoteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Recovery Note</DialogTitle>
+            </DialogHeader>
+            {currentNote && (
+              <RecoveryNoteForm
+                initialData={currentNote}
+                onSubmit={handleEditNote}
+                onCancel={() => setIsEditNoteDialogOpen(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Attachment Dialog */}
+        <Dialog open={isAddAttachmentDialogOpen} onOpenChange={setIsAddAttachmentDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Attachment</DialogTitle>
+            </DialogHeader>
+            <AttachmentForm
+              onSubmit={handleAddAttachment}
+              onCancel={() => setIsAddAttachmentDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Unsubscribe Dialog */}
+        <Dialog open={isUnsubscribeDialogOpen} onOpenChange={setIsUnsubscribeDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Unsubscribe</DialogTitle>
+              <DialogDescription>
+                Set the unsubscribe date for this subscriber.
+              </DialogDescription>
+            </DialogHeader>
+            <UnsubscribeForm
+              onSubmit={handleUnsubscribe}
+              onCancel={() => setIsUnsubscribeDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Plan Dialog */}
+        <Dialog open={isAssignPlanDialogOpen} onOpenChange={setIsAssignPlanDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assign Plan</DialogTitle>
+              <DialogDescription>
+                Select a plan to assign to this subscriber.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Plan</Label>
+                <Select
+                  value={selectedPlan || ""}
+                  onValueChange={setSelectedPlan}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePlans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.name} ({plan.duration} months)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsAssignPlanDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => selectedPlan && handleAssignPlan(selectedPlan)}
+                disabled={!selectedPlan}
+              >
+                Assign Plan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+};
+
+export default SubscriberDetailView;
