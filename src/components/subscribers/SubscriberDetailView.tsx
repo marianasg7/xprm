@@ -315,8 +315,8 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [selectedPromotion, setSelectedPromotion] = useState<string | null>(null);
+  const [appliedPromotionId, setAppliedPromotionId] = useState<string | null>(null);
 
-  // Find the latest subscriber data whenever the subscriber ID changes or subscribers list changes
   useEffect(() => {
     const latestSubscriber = subscribers.find(sub => sub.id === subscriber.id);
     if (latestSubscriber) {
@@ -324,7 +324,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     }
   }, [subscriber.id, subscribers]);
 
-  // Ensure subscriber fields are properly initialized with fallbacks
   const safeSubscriber = {
     ...currentSubscriber,
     tags: currentSubscriber.tags || [],
@@ -334,7 +333,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     interestedInCasting: currentSubscriber.interestedInCasting || false,
   };
 
-  // Get all castings this subscriber is participating in
   const subscriberCastings = castings.filter(casting => 
     casting.selectedSubscribers.includes(currentSubscriber.id)
   );
@@ -372,7 +370,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
   const handleUnsubscribe = (date: Date) => {
     unsubscribe(currentSubscriber.id, date);
     setIsUnsubscribeDialogOpen(false);
-    onClose(); // Close the detail view and go back to the list
+    onClose();
   };
 
   const openEditNoteModal = (note: RecoveryNote) => {
@@ -395,25 +393,19 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     }
   };
 
-  // Get all plans this subscriber might use
   const availablePlans = plans.filter(plan => plan.isActive);
   const subscriberCurrentPlan = safeSubscriber.plan;
   
-  // Get promotions relevant to this subscriber
   const activePromotions = promotions.filter(promo => 
     promo.isActive && 
     new Date(promo.endDate) >= new Date()
   );
 
-  // Determine which tabs to show based on subscriber status
   const showRecoveryTab = safeSubscriber.status === "inactive";
-  // Only show casting tab if subscriber is active AND interested in casting
   const showCastingTab = safeSubscriber.status === "active" && safeSubscriber.interestedInCasting;
   
-  // Always default to details tab
   const defaultTab = "details";
 
-  // Handle assigning a plan to the subscriber
   const handleAssignPlan = (planId: string) => {
     const plan = plans.find(p => p.id === planId);
     if (plan) {
@@ -425,25 +417,22 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     }
   };
 
-  // Handle assigning a promotion to the subscriber
   const handleAssignPromotion = (promoId: string) => {
     setSelectedPromotion(promoId);
   };
 
-  // Calculate plan end date based on subscription date and plan duration
-  const calculatePlanEndDate = () => {
-    if (!safeSubscriber.subscriptionDate || !safeSubscriber.planDuration) {
+  const calculatePlanEndDate = (subscriptionDate?: string | Date, planDuration?: number) => {
+    if (!subscriptionDate || !planDuration) {
       return "N/A";
     }
     
-    const startDate = new Date(safeSubscriber.subscriptionDate);
+    const startDate = new Date(subscriptionDate);
     const endDate = new Date(startDate);
-    endDate.setMonth(startDate.getMonth() + safeSubscriber.planDuration);
+    endDate.setMonth(startDate.getMonth() + planDuration);
     
     return formatDate(endDate);
   };
 
-  // Find any promotions applied to this subscriber's plan
   const getAppliedPromotion = () => {
     const subscriberPlan = plans.find(p => p.name === safeSubscriber.plan);
     if (!subscriberPlan) return null;
@@ -451,7 +440,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     return activePromotions.find(p => p.planId === subscriberPlan.id);
   };
 
-  // Create a color mapping for different fetish types
   const getFetishColor = (fetish: string | undefined) => {
     if (!fetish) return "bg-gray-100 text-gray-500";
     
@@ -468,7 +456,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
       "nylon": "bg-teal-100 text-teal-700"
     };
     
-    // Try to match the fetish to our predefined colors
     const lowerFetish = fetish.toLowerCase();
     for (const [key, value] of Object.entries(fetishColors)) {
       if (lowerFetish.includes(key)) {
@@ -476,7 +463,6 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
       }
     }
     
-    // Generate a consistent color based on the fetish name
     const hash = Array.from(lowerFetish).reduce((acc, char) => {
       return char.charCodeAt(0) + ((acc << 5) - acc);
     }, 0);
@@ -524,12 +510,14 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                   <h3 className="text-xl font-bold">
                     {safeSubscriber.nickname || safeSubscriber.name}
                   </h3>
-                  {safeSubscriber.interestedInCasting && (
-                    <span className="inline ml-2 text-amber-500">🎬</span>
-                  )}
-                  {safeSubscriber.status === "active" && (
-                    <Circle className="h-3 w-3 text-green-500 fill-green-500 ml-2" />
-                  )}
+                  <div className="flex items-center ml-2">
+                    {safeSubscriber.interestedInCasting && (
+                      <span className="inline text-amber-500">🎬</span>
+                    )}
+                    {safeSubscriber.status === "active" && (
+                      <Circle className="h-3 w-3 text-green-500 fill-green-500 ml-1" />
+                    )}
+                  </div>
                 </div>
                 {safeSubscriber.nickname && safeSubscriber.name !== safeSubscriber.nickname && (
                   <p className="text-muted-foreground">{safeSubscriber.name}</p>
@@ -552,9 +540,9 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     <span className="text-muted-foreground">Plan:</span>
                     <span className="font-medium">
                       {safeSubscriber.plan || "None"}
-                      {appliedPromotion && (
+                      {appliedPromotionId && (
                         <Badge className="ml-2 bg-orange-100 text-orange-700 border-0">
-                          {appliedPromotion.discountPercentage}% OFF
+                          {promotions.find(p => p.id === appliedPromotionId)?.discountPercentage}% OFF
                         </Badge>
                       )}
                     </span>
@@ -569,7 +557,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">End Date:</span>
-                    <span>{calculatePlanEndDate()}</span>
+                    <span>{calculatePlanEndDate(safeSubscriber.subscriptionDate, safeSubscriber.planDuration)}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -928,7 +916,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                           <div className="space-y-1">
                             <p className="text-sm font-medium">End Date</p>
                             <p className="text-sm text-muted-foreground">
-                              {calculatePlanEndDate()}
+                              {calculatePlanEndDate(safeSubscriber.subscriptionDate, safeSubscriber.planDuration)}
                             </p>
                           </div>
                           <div className="space-y-1">
@@ -940,6 +928,21 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                           <div className="space-y-1">
                             <p className="text-sm font-medium">Promotion</p>
                             <p className="text-sm">
-                              {appliedPromotion ? (
+                              {appliedPromotionId ? (
                                 <Badge className="bg-orange-100 text-orange-700 border-0">
-                                  {
+                                  {promotions.find(p => p.id === appliedPromotionId)?.name} 
+                                  ({promotions.find(p => p.id === appliedPromotionId)?.discountPercentage}% OFF)
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">No promotion applied</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>

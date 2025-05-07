@@ -1,7 +1,7 @@
+
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { AppSidebar } from "./components/sidebar/AppSidebar";
-import { Index } from "./pages";
 import { Dashboard } from "./pages/Dashboard";
 import SubscribersPage from "./pages/Subscribers";
 import { NonSubscribers } from "./pages/NonSubscribers";
@@ -13,6 +13,7 @@ import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/NotFound";
 import Projects from "./pages/Projects";
 import Telegram from "./pages/Telegram";
+import { Index } from "./pages/Index";
 import { SubscriberProvider } from "./context/SubscriberContext";
 import { SalesProvider } from "./context/SalesContext";
 
