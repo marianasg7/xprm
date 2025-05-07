@@ -37,8 +37,13 @@ export default function SubscriberCard({ subscriber, onClick }: SubscriberCardPr
       }
     }
     
-    // Default color if no match found
-    return "bg-violet-100 text-violet-700";
+    // Generate a consistent color based on the fetish name
+    const hash = Array.from(lowerFetish).reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    const hue = Math.abs(hash) % 360;
+    return `bg-[hsl(${hue},85%,90%)] text-[hsl(${hue},85%,30%)]`;
   };
 
   return (

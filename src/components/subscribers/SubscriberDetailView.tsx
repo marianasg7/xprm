@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
@@ -15,6 +14,7 @@ import {
   ChevronUp,
   Circle,
   Film,
+  Plus,
 } from "lucide-react";
 import { Subscriber, RecoveryNote, Attachment } from "@/types/types";
 import { Button } from "@/components/ui/button";
@@ -425,6 +425,11 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
     }
   };
 
+  // Handle assigning a promotion to the subscriber
+  const handleAssignPromotion = (promoId: string) => {
+    setSelectedPromotion(promoId);
+  };
+
   // Calculate plan end date based on subscription date and plan duration
   const calculatePlanEndDate = () => {
     if (!safeSubscriber.subscriptionDate || !safeSubscriber.planDuration) {
@@ -471,13 +476,13 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
       }
     }
     
-    // Default color if no match found
-    return "bg-violet-100 text-violet-700";
-  };
-
-  // Handle assigning a promotion to the subscriber
-  const handleAssignPromotion = (promoId: string) => {
-    setSelectedPromotion(promoId);
+    // Generate a consistent color based on the fetish name
+    const hash = Array.from(lowerFetish).reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    const hue = Math.abs(hash) % 360;
+    return `bg-[hsl(${hue},85%,90%)] text-[hsl(${hue},85%,30%)]`;
   };
 
   const appliedPromotion = getAppliedPromotion();
@@ -515,25 +520,25 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     <Camera className="h-3 w-3" />
                   </Button>
                 </div>
-                <h3 className="mt-2 text-xl font-bold">
-                  {safeSubscriber.nickname || safeSubscriber.name}
+                <div className="flex items-center mt-2">
+                  <h3 className="text-xl font-bold">
+                    {safeSubscriber.nickname || safeSubscriber.name}
+                  </h3>
                   {safeSubscriber.interestedInCasting && (
                     <span className="inline ml-2 text-amber-500">🎬</span>
                   )}
-                </h3>
+                  {safeSubscriber.status === "active" && (
+                    <Circle className="h-3 w-3 text-green-500 fill-green-500 ml-2" />
+                  )}
+                </div>
                 {safeSubscriber.nickname && safeSubscriber.name !== safeSubscriber.nickname && (
                   <p className="text-muted-foreground">{safeSubscriber.name}</p>
                 )}
                 <div className="flex items-center mt-2">
                   {safeSubscriber.status === "active" ? (
-                    <Circle className="h-3 w-3 text-green-500 fill-green-500 mr-2" />
+                    <Badge className="bg-green-500 text-white">Active</Badge>
                   ) : (
                     <Badge variant="destructive">Unsubscribed</Badge>
-                  )}
-                  {safeSubscriber.interestedInCasting && safeSubscriber.status === "active" && (
-                    <Badge className="ml-2 bg-orange-500" variant="outline">
-                      🎬
-                    </Badge>
                   )}
                 </div>
               </div>
@@ -607,14 +612,14 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Name</p>
                       <p className="text-sm text-muted-foreground">
-                        {safeSubscriber.name}
+                        {safeSubscriber.nickname || safeSubscriber.name}
                       </p>
                     </div>
                     {safeSubscriber.nickname && (
                       <div className="space-y-1">
-                        <p className="text-sm font-medium">Nickname</p>
+                        <p className="text-sm font-medium">Real Name</p>
                         <p className="text-sm text-muted-foreground">
-                          {safeSubscriber.nickname}
+                          {safeSubscriber.name}
                         </p>
                       </div>
                     )}
@@ -688,11 +693,16 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                 {showCastingTab && (
                   <TabsContent value="casting" className="mt-4">
                     <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg">Casting Opportunities</CardTitle>
-                        <CardDescription>
-                          Casting opportunities this subscriber is participating in
-                        </CardDescription>
+                      <CardHeader className="pb-2 flex flex-row justify-between items-center">
+                        <div>
+                          <CardTitle className="text-lg">Casting Opportunities</CardTitle>
+                          <CardDescription>
+                            Casting opportunities this subscriber is participating in
+                          </CardDescription>
+                        </div>
+                        <Button size="sm">
+                          <Plus className="h-4 w-4" />
+                        </Button>
                       </CardHeader>
                       <CardContent>
                         {subscriberCastings.length > 0 ? (
@@ -703,6 +713,14 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                                   <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                       <h3 className="text-lg font-medium">{casting.theme}</h3>
+                                      <div className="flex space-x-2">
+                                        <Button size="sm" variant="ghost">
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button size="sm" variant="ghost" className="text-red-500">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 text-sm">
                                       <div>
@@ -760,8 +778,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                           size="sm"
                           onClick={() => setIsAddNoteDialogOpen(true)}
                         >
-                          <PlusCircle className="h-4 w-4 mr-1" />
-                          Add Note
+                          <Plus className="h-4 w-4" />
                         </Button>
                       </CardHeader>
                       <CardContent>
@@ -896,8 +913,7 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                         size="sm"
                         onClick={() => setIsAssignPlanDialogOpen(true)}
                       >
-                        <PlusCircle className="h-4 w-4 mr-1" />
-                        Assign Plan/Promo
+                        <Plus className="h-4 w-4" />
                       </Button>
                     </CardHeader>
                     <CardContent>
@@ -910,15 +926,15 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                             </p>
                           </div>
                           <div className="space-y-1">
-                            <p className="text-sm font-medium">Duration</p>
-                            <p className="text-sm text-muted-foreground">
-                              {safeSubscriber.planDuration} months
-                            </p>
-                          </div>
-                          <div className="space-y-1">
                             <p className="text-sm font-medium">End Date</p>
                             <p className="text-sm text-muted-foreground">
                               {calculatePlanEndDate()}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">Start Date</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatDate(safeSubscriber.subscriptionDate)}
                             </p>
                           </div>
                           <div className="space-y-1">
@@ -926,331 +942,4 @@ const SubscriberDetailView: React.FC<SubscriberDetailViewProps> = ({
                             <p className="text-sm">
                               {appliedPromotion ? (
                                 <Badge className="bg-orange-100 text-orange-700 border-0">
-                                  {appliedPromotion.name} ({appliedPromotion.discountPercentage}% OFF)
-                                </Badge>
-                              ) : (
-                                <span className="text-muted-foreground">No promotion applied</span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div className="space-y-2">
-                          <Collapsible 
-                            open={isPlansExpanded} 
-                            onOpenChange={setIsPlansExpanded}
-                            className="w-full"
-                          >
-                            <CollapsibleTrigger asChild>
-                              <div className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded-md">
-                                <p className="text-sm font-medium">Available Plans</p>
-                                {isPlansExpanded ? (
-                                  <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4" />
-                                )}
-                              </div>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              {availablePlans.length > 0 ? (
-                                <div className="space-y-3 mt-2">
-                                  {availablePlans.map((plan) => (
-                                    <div key={plan.id} className="p-3 border rounded-md">
-                                      <div className="flex justify-between items-center">
-                                        <div>
-                                          <h4 className="font-medium">{plan.name}</h4>
-                                          <p className="text-sm text-muted-foreground">{plan.description}</p>
-                                        </div>
-                                        <div className="text-right">
-                                          <p className="font-medium">${plan.price}</p>
-                                          <p className="text-xs text-muted-foreground">{plan.duration} months</p>
-                                        </div>
-                                      </div>
-                                      <div className="mt-2 flex gap-2">
-                                        <Button 
-                                          size="sm" 
-                                          variant="outline"
-                                          onClick={() => handleAssignPlan(plan.id)}
-                                          disabled={safeSubscriber.plan === plan.name}
-                                        >
-                                          {safeSubscriber.plan === plan.name ? "Current Plan" : "Assign Plan"}
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground mt-2">No plans available</p>
-                              )}
-                            </CollapsibleContent>
-                          </Collapsible>
-                          
-                          <Collapsible 
-                            open={isPromotionsExpanded} 
-                            onOpenChange={setIsPromotionsExpanded}
-                            className="w-full mt-4"
-                          >
-                            <CollapsibleTrigger asChild>
-                              <div className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded-md">
-                                <p className="text-sm font-medium">Active Promotions</p>
-                                {isPromotionsExpanded ? (
-                                  <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4" />
-                                )}
-                              </div>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              {activePromotions.length > 0 ? (
-                                <div className="space-y-3 mt-2">
-                                  {activePromotions.map((promo) => {
-                                    // Find associated plan
-                                    const plan = plans.find(p => p.id === promo.planId);
-                                    const isCurrentPlanPromotion = plan?.name === safeSubscriber.plan;
-                                    const isApplied = appliedPromotion?.id === promo.id;
-                                    
-                                    return (
-                                      <div key={promo.id} className="p-3 border rounded-md border-orange-200 bg-orange-50">
-                                        <div className="flex justify-between items-center">
-                                          <div>
-                                            <h4 className="font-medium">{promo.name}</h4>
-                                            <p className="text-sm text-muted-foreground">{promo.description}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                              Valid until: {formatDate(promo.endDate)}
-                                            </p>
-                                          </div>
-                                          <div className="text-right">
-                                            <div className="flex items-center gap-2">
-                                              <Badge variant="outline" className="bg-orange-100">
-                                                {promo.discountPercentage}% OFF
-                                              </Badge>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                              {plan?.name || "Unknown plan"}
-                                            </p>
-                                          </div>
-                                        </div>
-                                        {isCurrentPlanPromotion && (
-                                          <div className="mt-2">
-                                            <Button
-                                              size="sm"
-                                              variant={isApplied ? "outline" : "secondary"}
-                                              onClick={() => {
-                                                // If not applied, apply this promotion to this subscriber
-                                                if (!isApplied) {
-                                                  updateSubscriber(currentSubscriber.id, {
-                                                    // Update with the promotion ID stored in subscriber data
-                                                    // This assumes your updateSubscriber function handles this special property
-                                                    appliedPromotionId: promo.id
-                                                  } as any); // Using type assertion here to avoid type error
-                                                } else {
-                                                  // If already applied, remove it
-                                                  updateSubscriber(currentSubscriber.id, {
-                                                    // Set to null to remove the promotion
-                                                    appliedPromotionId: null
-                                                  } as any); // Using type assertion here to avoid type error
-                                                }
-                                              }}
-                                            >
-                                              {isApplied ? "Remove Promotion" : "Apply Promotion"}
-                                            </Button>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground mt-2">No active promotions</p>
-                              )}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Add Note Dialog */}
-      <Dialog open={isAddNoteDialogOpen} onOpenChange={setIsAddNoteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Recovery Note</DialogTitle>
-            <DialogDescription>
-              Add a note for recovering this subscriber.
-            </DialogDescription>
-          </DialogHeader>
-          <RecoveryNoteForm
-            onSubmit={handleAddNote}
-            onCancel={() => setIsAddNoteDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Note Dialog */}
-      <Dialog open={isEditNoteDialogOpen} onOpenChange={setIsEditNoteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Recovery Note</DialogTitle>
-          </DialogHeader>
-          {currentNote && (
-            <RecoveryNoteForm
-              initialData={currentNote}
-              onSubmit={handleEditNote}
-              onCancel={() => setIsEditNoteDialogOpen(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Attachment Dialog */}
-      <Dialog
-        open={isAddAttachmentDialogOpen}
-        onOpenChange={setIsAddAttachmentDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Attachment</DialogTitle>
-            <DialogDescription>
-              Add a file attachment for this subscriber.
-            </DialogDescription>
-          </DialogHeader>
-          <AttachmentForm
-            onSubmit={handleAddAttachment}
-            onCancel={() => setIsAddAttachmentDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Unsubscribe Dialog */}
-      <Dialog
-        open={isUnsubscribeDialogOpen}
-        onOpenChange={setIsUnsubscribeDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Unsubscribe Subscriber</DialogTitle>
-            <DialogDescription>
-              Set the date when this subscriber will be unsubscribed.
-            </DialogDescription>
-          </DialogHeader>
-          <UnsubscribeForm
-            onSubmit={handleUnsubscribe}
-            onCancel={() => setIsUnsubscribeDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Assign Plan Dialog */}
-      <Dialog
-        open={isAssignPlanDialogOpen}
-        onOpenChange={setIsAssignPlanDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign Plan</DialogTitle>
-            <DialogDescription>
-              Select a plan to assign to this subscriber.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            {availablePlans.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4">
-                {availablePlans.map((plan) => (
-                  <div key={plan.id} className="border rounded-md p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="font-medium">{plan.name}</h4>
-                        <p className="text-sm text-muted-foreground">{plan.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">${plan.price}</p>
-                        <p className="text-xs text-muted-foreground">{plan.duration} months</p>
-                      </div>
-                    </div>
-                    <Button
-                      className="w-full mt-2"
-                      onClick={() => handleAssignPlan(plan.id)}
-                      disabled={safeSubscriber.plan === plan.name}
-                    >
-                      {safeSubscriber.plan === plan.name ? "Current Plan" : "Select Plan"}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground">No plans available</p>
-            )}
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setIsAssignPlanDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Photo Dialog */}
-      <Dialog
-        open={isPhotoDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsPhotoDialogOpen(false);
-            setPhotoUrl(null);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Profile Photo</DialogTitle>
-            <DialogDescription>
-              Upload a photo for this subscriber.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <Label htmlFor="photo">Select Photo</Label>
-            <Input id="photo" type="file" accept="image/*" onChange={handlePhotoChange} />
-            
-            {photoUrl && (
-              <div className="flex justify-center mt-4">
-                <Avatar className="h-32 w-32">
-                  <AvatarImage src={photoUrl} />
-                  <AvatarFallback className="text-4xl bg-primary text-white">
-                    {getInitials(safeSubscriber.name)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            )}
-            
-            <div className="flex justify-end gap-2 mt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsPhotoDialogOpen(false);
-                  setPhotoUrl(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleSavePhoto} disabled={!photoUrl}>
-                Save Photo
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default SubscriberDetailView;
+                                  {

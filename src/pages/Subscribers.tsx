@@ -95,7 +95,7 @@ const SubscribersPage: React.FC = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-end">
-        <div className="flex gap-2">
+        <div className="flex gap-2 ml-auto">
           {isSearchOpen ? (
             <div className="relative">
               <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
@@ -192,7 +192,7 @@ const SubscribersPage: React.FC = () => {
               setIsFormOpen(false);
               setSubscriberToEdit(null);
             }}
-            enablePhotoUpload={true}
+            enablePhotoUpload={false}
           />
         </DialogContent>
       </Dialog>

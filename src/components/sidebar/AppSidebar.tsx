@@ -1,100 +1,80 @@
 
-import React from "react";
-import { Home, Users, BarChart3, Settings, User, Cast, Tags, DollarSign } from "lucide-react";
+import { useLocation, NavLink } from "react-router-dom";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
-} from "@/components/ui/sidebar";
-import { useLocation, useNavigate } from "react-router-dom";
+  LayoutDashboard,
+  User,
+  UserMinus,
+  Film,
+  CreditCard,
+  BarChart3,
+  Settings,
+  Package,
+  MessagesSquare,
+  Lightbulb
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const menuItems = [
-  {
-    title: "Dashboard",
-    icon: Home,
-    path: "/",
-  },
-  {
-    title: "Subscribers",
-    icon: Users,
-    path: "/subscribers",
-  },
-  {
-    title: "Non-Subscribers",
-    icon: User,
-    path: "/non-subscribers",
-  },
-  {
-    title: "Castings",
-    icon: Cast,
-    path: "/castings",
-  },
-  {
-    title: "Plans",
-    icon: Tags,
-    path: "/plans",
-  },
-  {
-    title: "Sales",
-    icon: DollarSign,
-    path: "/sales",
-  },
-  {
-    title: "Analytics",
-    icon: BarChart3,
-    path: "/analytics",
-  },
-  {
-    title: "Settings",
-    icon: Settings,
-    path: "/settings",
-  },
-];
+interface SidebarItemProps {
+  icon: React.ElementType;
+  label: string;
+  to: string;
+}
 
 export function AppSidebar() {
-  const navigate = useNavigate();
   const location = useLocation();
+  const isActive = (path: string) => location.pathname === path;
+
+  const links = [
+    { icon: LayoutDashboard, label: "Dashboard", to: "/dashboard" },
+    { icon: User, label: "Subscribers", to: "/subscribers" },
+    { icon: UserMinus, label: "Non-Subscribers", to: "/non-subscribers" },
+    { icon: Film, label: "Castings", to: "/castings" },
+    { icon: Package, label: "Plans", to: "/plans" },
+    { icon: CreditCard, label: "Sales", to: "/sales" },
+    { icon: MessagesSquare, label: "Telegram", to: "/telegram" },
+    { icon: Lightbulb, label: "Projects", to: "/projects" },
+    { icon: BarChart3, label: "Analytics", to: "/analytics" },
+    { icon: Settings, label: "Settings", to: "/settings" },
+  ];
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4">
-        <div className="flex items-center space-x-2">
-          <div className="bg-primary rounded-md p-1">
-            <span className="text-white font-bold text-xl">X</span>
-          </div>
-          <span className="font-bold text-lg">XPRM</span>
-        </div>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    onClick={() => navigate(item.path)}
-                    className={location.pathname === item.path ? "bg-primary-light text-primary" : ""}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter className="p-4">
-        <div className="text-xs text-gray-500">XPRM Subscriber Management v1.0</div>
-      </SidebarFooter>
-    </Sidebar>
+    <div className="bg-background border-r w-64 flex flex-col p-4 overflow-y-auto">
+      <div className="h-14 flex items-center px-4">
+        <h2 className="text-lg font-bold">Content Manager</h2>
+      </div>
+
+      <nav className="space-y-2 mt-6 flex-1">
+        {links.map((item) => (
+          <SidebarItem
+            key={item.to}
+            icon={item.icon}
+            label={item.label}
+            to={item.to}
+          />
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+function SidebarItem({ icon: Icon, label, to }: SidebarItemProps) {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-4 px-4 py-2 rounded-md text-sm transition-colors",
+          isActive
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+        )
+      }
+    >
+      <Icon className="w-5 h-5" />
+      <span>{label}</span>
+    </NavLink>
   );
 }

@@ -1,15 +1,8 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { useSubscribers } from "@/context/SubscriberContext";
-import { Subscriber, Tag } from "@/types/types";
-
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -19,14 +12,19 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { TagInput } from "@/components/ui/tag-input";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -34,35 +32,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-
-const formSchema = z.object({
-  name: z.string().min(1, { message: "Name is required" }),
-  email: z.string().email({ message: "Invalid email address" }),
-  phone: z.string().min(1, { message: "Phone number is required" }),
-  nickname: z.string().optional(),
-  size: z.string().optional(),
-  fetish: z.string().optional(),
-  fanslyUser: z.string().optional(),
-  photoUrl: z.string().optional(),
-  subscriptionDate: z.date({ required_error: "Subscription date is required" }),
-  plan: z.string().min(1, { message: "Plan is required" }),
-  planDuration: z.number().min(1, { message: "Plan duration is required" }),
-  tags: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-    })
-  ),
-  isUnsubscribed: z.boolean().default(false),
-  interestedInCasting: z.boolean().default(false),
-  status: z.enum(["active", "inactive"]),
-  endSubscriptionDate: z.date().optional(),
-});
+import { useSubscribers } from "@/context/SubscriberContext";
+import { Subscriber } from "@/types/types";
 
 interface SubscriberFormProps {
   initialData?: Subscriber;
-  onSubmit: (data: z.infer<typeof formSchema>) => void;
+  onSubmit: (data: Omit<Subscriber, "id" | "createdAt">) => void;
   onCancel: () => void;
   enablePhotoUpload?: boolean;
 }
@@ -73,130 +48,133 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
   onCancel,
   enablePhotoUpload = false,
 }) => {
-  const { tags, addTag } = useSubscribers();
-  const isEditing = !!initialData;
+  const { tags: allTags, addTag } = useSubscribers();
+  const [selectedTags, setSelectedTags] = useState<string[]>(
+    initialData?.tags.map((tag) => tag.id) || []
+  );
+  const [newTag, setNewTag] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(
+    initialData?.photoUrl || null
+  );
+
+  // Modified fetish options with consistent colors
+  const fetchFetishColors = (fetish: string) => {
+    const fetishColors: {[key: string]: string} = {
+      "foot": "bg-blue-100 text-blue-700",
+      "feet": "bg-blue-100 text-blue-700",
+      "leather": "bg-amber-100 text-amber-800",
+      "bdsm": "bg-purple-100 text-purple-700",
+      "latex": "bg-pink-100 text-pink-700",
+      "pee": "bg-yellow-100 text-yellow-700",
+      "findom": "bg-green-100 text-green-700",
+      "roleplay": "bg-indigo-100 text-indigo-700",
+      "sph": "bg-orange-100 text-orange-700",
+      "nylon": "bg-teal-100 text-teal-700"
+    };
+    
+    // Try to match the fetish to our predefined colors
+    const lowerFetish = fetish.toLowerCase();
+    for (const [key, value] of Object.entries(fetishColors)) {
+      if (lowerFetish.includes(key)) {
+        return value;
+      }
+    }
+    
+    // Generate a consistent color based on the fetish name
+    const hash = Array.from(lowerFetish).reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    const hue = Math.abs(hash) % 360;
+    return `bg-[hsl(${hue},85%,90%)] text-[hsl(${hue},85%,30%)]`;
+  };
+
+  const formSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().min(1, "Phone number is required"),
+    nickname: z.string().optional(),
+    size: z.string().optional(),
+    fetish: z.string().optional(),
+    fanslyUser: z.string().optional(),
+    subscriptionDate: z.date({
+      required_error: "Subscription date is required",
+    }),
+    status: z.enum(["active", "inactive"]).default("active"),
+    plan: z.string().min(1, "Plan is required"),
+    planDuration: z.number().int().positive().default(1),
+    interestedInCasting: z.boolean().default(false),
+    tags: z.array(z.string()).default([]),
+    recoveryNotes: z.array(z.any()).default([]),
+    attachments: z.array(z.any()).default([]),
+    castingParticipations: z.array(z.string()).default([]),
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData
-      ? {
-          ...initialData,
-          subscriptionDate: new Date(initialData.subscriptionDate),
-          endSubscriptionDate: initialData.endSubscriptionDate
-            ? new Date(initialData.endSubscriptionDate)
-            : undefined,
-          isUnsubscribed: initialData.status === "inactive",
-          interestedInCasting: initialData.interestedInCasting || false,
-        }
-      : {
-          name: "",
-          email: "",
-          phone: "",
-          nickname: "",
-          size: "",
-          fetish: "",
-          fanslyUser: "",
-          photoUrl: "",
-          subscriptionDate: new Date(),
-          plan: "Basic",
-          planDuration: 1,
-          tags: [],
-          isUnsubscribed: false,
-          interestedInCasting: false,
-          status: "active",
-        },
+    defaultValues: {
+      name: initialData?.name || "",
+      email: initialData?.email || "",
+      phone: initialData?.phone || "",
+      nickname: initialData?.nickname || "",
+      size: initialData?.size || "",
+      fetish: initialData?.fetish || "",
+      fanslyUser: initialData?.fanslyUser || "",
+      subscriptionDate: initialData?.subscriptionDate
+        ? new Date(initialData.subscriptionDate)
+        : new Date(),
+      status: initialData?.status || "active",
+      plan: initialData?.plan || "",
+      planDuration: initialData?.planDuration || 1,
+      interestedInCasting: initialData?.interestedInCasting || false,
+      tags: initialData?.tags.map((tag) => tag.id) || [],
+      recoveryNotes: initialData?.recoveryNotes || [],
+      attachments: initialData?.attachments || [],
+      castingParticipations: initialData?.castingParticipations || [],
+    },
   });
 
-  const selectedTags = form.watch("tags") || [];
-  const isUnsubscribed = form.watch("isUnsubscribed");
+  const handleSubmit = (data: z.infer<typeof formSchema>) => {
+    const subscriberData: Omit<Subscriber, "id" | "createdAt"> = {
+      ...data,
+      tags: allTags.filter((tag) => selectedTags.includes(tag.id)),
+    };
 
-  // Update status when isUnsubscribed changes
-  React.useEffect(() => {
-    const newStatus = isUnsubscribed ? "inactive" : "active";
-    form.setValue("status", newStatus);
-  }, [isUnsubscribed, form]);
+    if (photoFile) {
+      (subscriberData as any).photoFile = photoFile;
+    }
 
-  const handleAddNewTag = (name: string): Tag => {
-    return addTag(name);
+    onSubmit(subscriberData);
   };
 
-  const [photoFile, setPhotoFile] = React.useState<File | null>(null);
-
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setPhotoFile(e.target.files[0]);
-      
-      // Create a preview URL for the selected image
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          form.setValue("photoUrl", event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(e.target.files[0]);
+  const handleAddTag = () => {
+    if (newTag.trim()) {
+      const tag = addTag(newTag.trim());
+      setSelectedTags([...selectedTags, tag.id]);
+      setNewTag("");
     }
   };
 
-  const handleFormSubmit = (data: z.infer<typeof formSchema>) => {
-    // Add the photo file to the form data for processing in the parent component
-    const formData = {
-      ...data,
-      photoFile: photoFile
-    };
-    onSubmit(formData as any);
+  const handleRemoveTag = (tagId: string) => {
+    setSelectedTags(selectedTags.filter((id) => id !== tagId));
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      const url = URL.createObjectURL(file);
+      setPhotoPreview(url);
+    }
   };
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(handleFormSubmit)}
-        className="space-y-6 max-w-4xl"
-      >
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold">
-            {isEditing ? "Edit Subscriber" : "Add New Subscriber"}
-          </h2>
-
-          {enablePhotoUpload && (
-            <div className="mb-4">
-              <FormLabel>Profile Photo</FormLabel>
-              <div className="flex items-center space-x-4 mt-2">
-                {form.watch("photoUrl") ? (
-                  <div className="relative w-20 h-20">
-                    <img 
-                      src={form.watch("photoUrl")} 
-                      alt="Profile preview" 
-                      className="w-20 h-20 rounded-full object-cover"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                      onClick={() => {
-                        form.setValue("photoUrl", "");
-                        setPhotoFile(null);
-                      }}
-                    >
-                      ×
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full">
-                    <span className="text-3xl text-gray-400">+</span>
-                  </div>
-                )}
-                <Input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="max-w-xs"
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* Name and Nickname Fields */}
             <FormField
               control={form.control}
               name="name"
@@ -213,6 +191,21 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
 
             <FormField
               control={form.control}
+              name="nickname"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nickname</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter nickname (optional)" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Email Field */}
+            <FormField
+              control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
@@ -224,7 +217,8 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
                 </FormItem>
               )}
             />
-
+            
+            {/* Phone Field */}
             <FormField
               control={form.control}
               name="phone"
@@ -239,20 +233,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="nickname"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nickname</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter nickname" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            {/* Size Field */}
             <FormField
               control={form.control}
               name="size"
@@ -267,6 +248,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
               )}
             />
 
+            {/* Fetish Field */}
             <FormField
               control={form.control}
               name="fetish"
@@ -274,27 +256,47 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
                 <FormItem>
                   <FormLabel>Fetish</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter fetish" {...field} />
+                    <Input {...field} placeholder="Enter fetish" />
                   </FormControl>
                   <FormMessage />
+                  {field.value && (
+                    <div className="mt-2">
+                      <Badge className={fetchFetishColors(field.value)}>
+                        {field.value}
+                      </Badge>
+                    </div>
+                  )}
                 </FormItem>
               )}
             />
 
+            {/* Fansly User Field */}
             <FormField
               control={form.control}
               name="fanslyUser"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fansly Username</FormLabel>
+                  <FormLabel>Fansly User</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter Fansly username" {...field} />
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-muted-foreground">
+                        @
+                      </span>
+                      <Input
+                        {...field}
+                        className="pl-7"
+                        placeholder="fansly_username"
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+          </div>
 
+          <div className="space-y-6">
+            {/* Subscription Date Field */}
             <FormField
               control={form.control}
               name="subscriptionDate"
@@ -307,14 +309,14 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "pl-3 text-left font-normal",
+                            "w-full pl-3 text-left font-normal",
                             !field.value && "text-muted-foreground"
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "dd/MM/yyyy")
+                            format(field.value, "PPP")
                           ) : (
-                            <span>Select date</span>
+                            <span>Pick a date</span>
                           )}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
@@ -325,8 +327,10 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
                         initialFocus
-                        className={cn("p-3 pointer-events-auto")}
                       />
                     </PopoverContent>
                   </Popover>
@@ -335,40 +339,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
               )}
             />
 
-            {/* Unsubscribed Checkbox */}
-            <FormField
-              control={form.control}
-              name="isUnsubscribed"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-end space-x-2 space-y-0 rounded-md p-4 border">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel className="mb-0">Unsubscribed</FormLabel>
-                </FormItem>
-              )}
-            />
-
-            {/* Interested In Casting Checkbox */}
-            <FormField
-              control={form.control}
-              name="interestedInCasting"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-end space-x-2 space-y-0 rounded-md p-4 border">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel className="mb-0">Interested in Casting</FormLabel>
-                </FormItem>
-              )}
-            />
-
+            {/* Plan Field - modified to show plans dropdown */}
             <FormField
               control={form.control}
               name="plan"
@@ -381,7 +352,7 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select plan" />
+                        <SelectValue placeholder="Select a plan" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -396,26 +367,27 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
               )}
             />
 
+            {/* Promotion field replacing Duration */}
             <FormField
               control={form.control}
-              name="planDuration"
+              name="promotion"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Duration (months)</FormLabel>
+                  <FormLabel>Promotion</FormLabel>
                   <Select
-                    onValueChange={(value) => field.onChange(parseInt(value))}
-                    defaultValue={field.value.toString()}
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select duration" />
+                        <SelectValue placeholder="Select a promotion (optional)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="1">1 Month</SelectItem>
-                      <SelectItem value="3">3 Months</SelectItem>
-                      <SelectItem value="6">6 Months</SelectItem>
-                      <SelectItem value="12">12 Months</SelectItem>
+                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="summer_promo">Summer Sale (20% OFF)</SelectItem>
+                      <SelectItem value="new_user">New User (15% OFF)</SelectItem>
+                      <SelectItem value="loyalty">Loyalty (10% OFF)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -423,80 +395,108 @@ const SubscriberForm: React.FC<SubscriberFormProps> = ({
               )}
             />
 
-            {/* Show Unsubscribe Date field only when the checkbox is checked */}
-            {isUnsubscribed && (
-              <FormField
-                control={form.control}
-                name="endSubscriptionDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Unsubscribe Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "dd/MM/yyyy")
-                            ) : (
-                              <span>Select date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </div>
+            {/* Plan Duration is hidden and calculated automatically */}
+            <input type="hidden" {...form.register("planDuration")} value="1" />
 
-          <FormField
-            control={form.control}
-            name="tags"
-            render={({ field }) => (
+            {/* Tags Field */}
+            <FormItem>
+              <FormLabel>Tags</FormLabel>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedTags.map((tagId) => {
+                  const tag = allTags.find((t) => t.id === tagId);
+                  return (
+                    tag && (
+                      <Badge
+                        key={tag.id}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
+                        {tag.name}
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full outline-none focus:ring-2 focus:ring-offset-2"
+                          onClick={() => handleRemoveTag(tag.id)}
+                        >
+                          &times;
+                        </button>
+                      </Badge>
+                    )
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add tag"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                />
+                <Button type="button" onClick={handleAddTag}>
+                  Add
+                </Button>
+              </div>
+              <FormMessage />
+            </FormItem>
+
+            {/* Replace "Interested in Casting" with just "Casting" */}
+            <FormField
+              control={form.control}
+              name="interestedInCasting"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel className="mb-0">Casting</FormLabel>
+                    <FormDescription>
+                      Mark this subscriber as interested in casting
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Photo upload - Remove for forms, keep only in details */}
+            {enablePhotoUpload && (
               <FormItem>
-                <FormLabel>Tags</FormLabel>
-                <FormControl>
-                  <TagInput
-                    existingTags={tags}
-                    selectedTags={selectedTags as Tag[]}
-                    onTagsChange={field.onChange}
-                    onAddNewTag={handleAddNewTag}
-                    placeholder="Add tags..."
+                <FormLabel>Profile Photo</FormLabel>
+                <div className="flex items-center gap-4">
+                  {photoPreview && (
+                    <div className="w-16 h-16 rounded-full overflow-hidden">
+                      <img
+                        src={photoPreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
                   />
-                </FormControl>
-                <FormDescription>
-                  Enter tag name and press Enter to add it
-                </FormDescription>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
-          />
+          </div>
         </div>
 
-        <div className="flex justify-end space-x-2">
+        <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button type="submit">
-            {isEditing ? "Update Subscriber" : "Add Subscriber"}
+            {initialData ? "Save" : "Add Subscriber"}
           </Button>
         </div>
       </form>
