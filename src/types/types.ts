@@ -1,3 +1,4 @@
+
 export type Tag = {
   id: string;
   name: string;
@@ -103,4 +104,40 @@ export interface Sale {
   deliveryStatus: DeliveryStatus;
   sentDate?: Date;
   createdAt: Date;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  status: 'planned' | 'in-progress' | 'completed';
+  description?: string;
+  locationDetails?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  imageUrl?: string;
+  ideasIds: string[];
+  equipmentIds: string[];
+  participantsIds: string[];
+}
+
+export interface Idea {
+  id: string;
+  title: string;
+  description?: string;
+  tags?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+  imageUrl?: string;
+  projectIds: string[];
+}
+
+export interface Equipment {
+  id: string;
+  name: string;
+  type?: string;
+  location?: string;
+  description?: string;
+  imageUrl?: string;
+  quantity?: number;
+  projectIds: string[];
 }

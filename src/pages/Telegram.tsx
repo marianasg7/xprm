@@ -31,9 +31,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowDown, Save, Send } from "lucide-react";
+import { ArrowDown, Check, Save, Send } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSales } from "@/context/SalesContext";
+import { Badge } from "@/components/ui/badge";
+import { PaymentStatus, DeliveryStatus, Sale, Video } from "@/types/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const telegramFormSchema = z.object({
   telegramToken: z.string().min(1, "Telegram bot token is required"),
@@ -41,19 +44,11 @@ const telegramFormSchema = z.object({
   notificationEnabled: z.boolean().default(true),
 });
 
-const saleFormSchema = z.object({
-  customerName: z.string().min(1, "Customer name is required"),
-  customerEmail: z.string().email("Invalid email address"),
-  productId: z.string().min(1, "Product is required"),
-  amount: z.string().min(1, "Amount is required"),
-  paymentMethod: z.string().min(1, "Payment method is required"),
-});
-
 const TelegramPage: React.FC = () => {
   const { toast } = useToast();
-  const { plans } = useSales();
+  const { plans, videos, sales, addSale, updateSale } = useSales();
   const [connected, setConnected] = useState(false);
-  const [sales, setSales] = useState<any[]>([]);
+  const [autoSales, setAutoSales] = useState<Sale[]>([]);
 
   const telegramForm = useForm<z.infer<typeof telegramFormSchema>>({
     resolver: zodResolver(telegramFormSchema),
@@ -61,17 +56,6 @@ const TelegramPage: React.FC = () => {
       telegramToken: "",
       chatId: "",
       notificationEnabled: true,
-    },
-  });
-
-  const saleForm = useForm<z.infer<typeof saleFormSchema>>({
-    resolver: zodResolver(saleFormSchema),
-    defaultValues: {
-      customerName: "",
-      customerEmail: "",
-      productId: "",
-      amount: "",
-      paymentMethod: "telegram",
     },
   });
 
@@ -84,291 +68,291 @@ const TelegramPage: React.FC = () => {
     setConnected(true);
   };
 
-  const handleSale = (data: z.infer<typeof saleFormSchema>) => {
-    // Create a new sale record
-    const newSale = {
-      id: `sale-${Date.now()}`,
-      customer: data.customerName,
-      email: data.customerEmail,
-      product: plans.find(p => p.id === data.productId)?.name || data.productId,
-      amount: parseFloat(data.amount),
-      paymentMethod: data.paymentMethod,
-      date: new Date(),
+  const handleMarkAsPaid = (saleId: string) => {
+    // Atualiza o status da venda para pago
+    updateSale({
+      ...sales.find(sale => sale.id === saleId)!,
+      paymentStatus: "paid"
+    });
+    
+    // Atualiza a lista local
+    setAutoSales(autoSales.map(sale => 
+      sale.id === saleId ? { ...sale, paymentStatus: "paid" } : sale
+    ));
+    
+    toast({
+      title: "Payment verified",
+      description: "The payment has been marked as verified.",
+    });
+  };
+
+  const handleSendVideo = (saleId: string) => {
+    // Atualiza o status da entrega para entregue
+    const sale = sales.find(sale => sale.id === saleId)!;
+    updateSale({
+      ...sale,
+      deliveryStatus: "delivered",
+      sentDate: new Date()
+    });
+    
+    // Atualiza a lista local
+    setAutoSales(autoSales.map(s => 
+      s.id === saleId ? { ...s, deliveryStatus: "delivered", sentDate: new Date() } : s
+    ));
+    
+    toast({
+      title: "Video sent",
+      description: "The video has been sent to the customer.",
+    });
+  };
+
+  // Simulação de recebimento de vendas automáticas via API do Telegram
+  const simulateNewTelegramSale = () => {
+    if (!connected) {
+      toast({
+        title: "Not connected",
+        description: "Please connect your Telegram bot first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Simulando dados que viriam da API do Telegram
+    const randomVideo = videos[Math.floor(Math.random() * videos.length)] || {
+      id: "video-1",
+      title: "Sample Video",
+      price: 19.99
+    };
+    
+    const randomSubscriberId = `sub-${Math.floor(Math.random() * 1000)}`;
+    
+    const newSale: Omit<Sale, "id" | "createdAt"> = {
+      videoId: randomVideo.id,
+      subscriberId: randomSubscriberId,
+      saleDate: new Date(),
+      price: randomVideo.price,
+      paymentStatus: "pending",
+      deliveryStatus: "pending"
     };
 
-    // Add to sales list
-    setSales([newSale, ...sales]);
+    // Adiciona a venda ao sistema
+    addSale(newSale);
+    
+    const saleWithId = {
+      ...newSale,
+      id: `sale-${Date.now()}`,
+      createdAt: new Date()
+    };
+    
+    // Adiciona à lista local
+    setAutoSales([saleWithId, ...autoSales]);
 
-    // Simulate sending notification
     toast({
-      title: "Sale recorded",
-      description: `Sale of ${newSale.product} to ${newSale.customer} has been recorded.`,
+      title: "New sale received",
+      description: "A new sale has been automatically recorded from Telegram.",
     });
+  };
 
-    // Reset form
-    saleForm.reset({
-      customerName: "",
-      customerEmail: "",
-      productId: "",
-      amount: "",
-      paymentMethod: "telegram",
-    });
+  // Status styling helpers
+  const getPaymentStatusBadge = (status: PaymentStatus) => {
+    switch (status) {
+      case "paid":
+        return <Badge className="bg-green-600">Pago</Badge>;
+      case "pending":
+        return <Badge className="bg-yellow-600">Pendente</Badge>;
+      case "failed":
+        return <Badge className="bg-red-600">Falhou</Badge>;
+      case "refunded":
+        return <Badge className="bg-purple-600">Reembolsado</Badge>;
+    }
+  };
+  
+  const getDeliveryStatusBadge = (status: DeliveryStatus) => {
+    switch (status) {
+      case "delivered":
+        return <Badge className="bg-green-600">Entregue</Badge>;
+      case "pending":
+        return <Badge className="bg-yellow-600">Pendente</Badge>;
+      case "failed":
+        return <Badge className="bg-red-600">Falhou</Badge>;
+    }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Telegram Integration</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Integração Telegram</h1>
         <p className="text-muted-foreground mt-1">
-          Connect your Telegram bot to record sales and receive notifications
+          Conecte seu bot do Telegram para receber vendas automaticamente
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Connect Telegram Bot</CardTitle>
-            <CardDescription>
-              Link your Telegram bot to enable sales recording through Telegram
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...telegramForm}>
-              <form onSubmit={telegramForm.handleSubmit(handleConnect)} className="space-y-6">
-                <FormField
-                  control={telegramForm.control}
-                  name="telegramToken"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telegram Bot Token</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter your telegram bot token" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Create a bot via @BotFather on Telegram to get a token
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={telegramForm.control}
-                  name="chatId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Chat ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter your chat ID" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        The chat where notifications will be sent
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={telegramForm.control}
-                  name="notificationEnabled"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                      <div className="space-y-0.5">
-                        <FormLabel>Enable Notifications</FormLabel>
+      <Tabs defaultValue="connection" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="connection">Conexão</TabsTrigger>
+          <TabsTrigger value="sales">Vendas Automáticas</TabsTrigger>
+        </TabsList>
+      
+        <TabsContent value="connection">
+          <Card>
+            <CardHeader>
+              <CardTitle>Conectar Bot Telegram</CardTitle>
+              <CardDescription>
+                Vincule seu bot do Telegram para habilitar vendas automáticas
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...telegramForm}>
+                <form onSubmit={telegramForm.handleSubmit(handleConnect)} className="space-y-6">
+                  <FormField
+                    control={telegramForm.control}
+                    name="telegramToken"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Token do Bot Telegram</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Insira o token do seu bot" {...field} />
+                        </FormControl>
                         <FormDescription>
-                          Receive notifications when sales are recorded
+                          Crie um bot via @BotFather no Telegram para obter um token
                         </FormDescription>
-                      </div>
-                      <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
-                          className="h-4 w-4"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <Button type="submit" disabled={connected}>
-                  {connected ? "Connected" : "Connect Telegram"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Record Sale from Telegram</CardTitle>
-            <CardDescription>
-              Record a new sale that occurred on Telegram
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...saleForm}>
-              <form onSubmit={saleForm.handleSubmit(handleSale)} className="space-y-6">
-                <FormField
-                  control={saleForm.control}
-                  name="customerName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Customer Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Customer name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={saleForm.control}
-                  name="customerEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Customer Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="customer@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={saleForm.control}
-                  name="productId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Product</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                  <FormField
+                    control={telegramForm.control}
+                    name="chatId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ID do Chat</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a product" />
-                          </SelectTrigger>
+                          <Input placeholder="Insira o ID do chat" {...field} />
                         </FormControl>
-                        <SelectContent>
-                          {plans.map(plan => (
-                            <SelectItem key={plan.id} value={plan.id}>
-                              {plan.name} - ${plan.price}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormDescription>
+                          O chat onde as notificações serão enviadas
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={saleForm.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Amount</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-muted-foreground">
-                            $
-                          </span>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            className="pl-7"
-                            {...field}
-                          />
+                  <FormField
+                    control={telegramForm.control}
+                    name="notificationEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                          <FormLabel>Habilitar Notificações</FormLabel>
+                          <FormDescription>
+                            Receber notificações quando vendas forem registradas
+                          </FormDescription>
                         </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={saleForm.control}
-                  name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Payment Method</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select payment method" />
-                          </SelectTrigger>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4"
+                          />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="telegram">Telegram Payment</SelectItem>
-                          <SelectItem value="paypal">PayPal</SelectItem>
-                          <SelectItem value="credit_card">Credit Card</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      </FormItem>
+                    )}
+                  />
 
-                <Button type="submit" disabled={!connected}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Record Sale
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle>Recent Telegram Sales</CardTitle>
-          <CardDescription>
-            Sales recorded through your Telegram integration
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {sales.length > 0 ? (
-            <div className="space-y-4 mt-4">
-              <div className="grid grid-cols-5 font-medium text-sm">
-                <div>Customer</div>
-                <div>Email</div>
-                <div>Product</div>
-                <div>Amount</div>
-                <div>Date</div>
-              </div>
-              <Separator />
-              {sales.map(sale => (
-                <div key={sale.id} className="grid grid-cols-5 text-sm">
-                  <div>{sale.customer}</div>
-                  <div>{sale.email}</div>
-                  <div>{sale.product}</div>
-                  <div>${sale.amount.toFixed(2)}</div>
-                  <div>{new Date(sale.date).toLocaleDateString()}</div>
+                  <Button type="submit" disabled={connected}>
+                    {connected ? "Conectado" : "Conectar Telegram"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      
+        <TabsContent value="sales">
+          <div className="grid grid-cols-1 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>Vendas via Telegram</CardTitle>
+                  <CardDescription>
+                    Vendas recebidas automaticamente da API do Telegram
+                  </CardDescription>
                 </div>
-              ))}
-            </div>
-          ) : connected ? (
-            <div className="text-center py-12 space-y-4">
-              <p className="text-muted-foreground">No sales recorded yet</p>
-              <ArrowDown className="mx-auto h-8 w-8 text-muted-foreground animate-bounce" />
-              <p className="text-sm">Record your first sale using the form above</p>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                Connect your Telegram bot to start recording sales
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <Button onClick={simulateNewTelegramSale} disabled={!connected}>
+                  Simular Nova Venda
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {autoSales.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-6 text-sm font-medium text-muted-foreground">
+                      <div>Data</div>
+                      <div>ID do Assinante</div>
+                      <div>ID do Vídeo</div>
+                      <div>Valor</div>
+                      <div>Status</div>
+                      <div>Ações</div>
+                    </div>
+                    <Separator />
+                    {autoSales.map(sale => (
+                      <div key={sale.id} className="grid grid-cols-6 items-center text-sm">
+                        <div>{new Date(sale.saleDate).toLocaleDateString()}</div>
+                        <div>{sale.subscriberId}</div>
+                        <div>{sale.videoId}</div>
+                        <div>R$ {sale.price.toFixed(2)}</div>
+                        <div className="flex flex-col gap-2">
+                          <div>
+                            Pagamento: {getPaymentStatusBadge(sale.paymentStatus)}
+                          </div>
+                          <div>
+                            Entrega: {getDeliveryStatusBadge(sale.deliveryStatus)}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          {sale.paymentStatus === "pending" && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleMarkAsPaid(sale.id)}
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Marcar como Pago
+                            </Button>
+                          )}
+                          {sale.paymentStatus === "paid" && sale.deliveryStatus === "pending" && (
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSendVideo(sale.id)}
+                            >
+                              <Send className="h-4 w-4 mr-2" />
+                              Enviar Vídeo
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : connected ? (
+                  <div className="text-center py-12 space-y-4">
+                    <p className="text-muted-foreground">Nenhuma venda automática registrada</p>
+                    <ArrowDown className="mx-auto h-8 w-8 text-muted-foreground animate-bounce" />
+                    <p className="text-sm">Use o botão acima para simular uma venda automática</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">
+                      Conecte seu bot do Telegram para começar a receber vendas automáticas
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
