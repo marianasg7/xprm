@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState } from "react";
-import { Plan, Promotion, Sale, Video } from "@/types/types";
+import { Plan, Promotion, Sale, Video, Casting } from "@/types/types";
 import { nanoid } from "nanoid";
 
 type SalesContextType = {
@@ -8,6 +7,7 @@ type SalesContextType = {
   promotions: Promotion[];
   videos: Video[];
   sales: Sale[];
+  castings: Casting[];
   addPlan: (plan: Omit<Plan, "id" | "createdAt">) => void;
   updatePlan: (plan: Plan) => void;
   deletePlan: (id: string) => void;
@@ -20,6 +20,11 @@ type SalesContextType = {
   addSale: (sale: Omit<Sale, "id" | "createdAt">) => void;
   updateSale: (sale: Sale) => void;
   deleteSale: (id: string) => void;
+  addTelegramSale: (sale: Omit<Sale, "id" | "createdAt" | "source">) => void;
+  getCastings: () => Casting[];
+  updateCasting: (casting: Casting) => void;
+  associateProjectWithCasting: (castingId: string, projectId: string) => void;
+  removeProjectFromCasting: (castingId: string, projectId: string) => void;
 };
 
 // Generate mock plans for testing
@@ -68,6 +73,62 @@ const generateMockPlans = (): Plan[] => {
   ];
 };
 
+// Generate mock castings
+const generateMockCastings = (): Casting[] => {
+  return [
+    {
+      id: nanoid(),
+      theme: "Summer Beach",
+      numberOfPeople: 3,
+      openingDate: new Date(),
+      closingDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      recordingDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      postingDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+      selectedSubscribers: [],
+      createdAt: new Date(),
+      associatedProjectIds: []
+    },
+    {
+      id: nanoid(),
+      theme: "Halloween Special",
+      numberOfPeople: 4,
+      openingDate: new Date(),
+      closingDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      recordingDate: new Date(Date.now() + 17 * 24 * 60 * 60 * 1000),
+      postingDate: new Date(Date.now() + 24 * 24 * 60 * 60 * 1000),
+      selectedSubscribers: [],
+      createdAt: new Date(),
+      associatedProjectIds: []
+    }
+  ];
+};
+
+// Generate mock videos
+const generateMockVideos = (): Video[] => {
+  return [
+    {
+      id: nanoid(),
+      title: "Beach Day Fun",
+      description: "Summer themed video at the beach",
+      price: 19.99,
+      duration: 15,
+      url: "https://example.com/video1",
+      createdAt: new Date(),
+      participants: []
+    },
+    {
+      id: nanoid(),
+      title: "Sunset Shoot",
+      description: "Beautiful sunset themed video",
+      price: 24.99,
+      duration: 20,
+      url: "https://example.com/video2",
+      createdAt: new Date(),
+      participants: []
+    }
+  ];
+};
+
 const SalesContext = createContext<SalesContextType | undefined>(undefined);
 
 export const useSales = () => {
@@ -81,8 +142,9 @@ export const useSales = () => {
 export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [plans, setPlans] = useState<Plan[]>(generateMockPlans());
   const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<Video[]>(generateMockVideos());
   const [sales, setSales] = useState<Sale[]>([]);
+  const [castings, setCastings] = useState<Casting[]>(generateMockCastings());
 
   const addPlan = (plan: Omit<Plan, "id" | "createdAt">) => {
     const newPlan: Plan = {
@@ -140,8 +202,21 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addSale = (sale: Omit<Sale, "id" | "createdAt">) => {
     const newSale: Sale = {
       ...sale,
+      quantity: sale.quantity || 1, // Default to 1 if not specified
       id: crypto.randomUUID(),
       createdAt: new Date(),
+      source: 'manual', // Default source is manual
+    };
+    setSales([...sales, newSale]);
+  };
+
+  const addTelegramSale = (sale: Omit<Sale, "id" | "createdAt" | "source">) => {
+    const newSale: Sale = {
+      ...sale,
+      quantity: sale.quantity || 1,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      source: 'telegram', // Mark as coming from Telegram
     };
     setSales([...sales, newSale]);
   };
@@ -154,12 +229,48 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSales(sales.filter(sale => sale.id !== id));
   };
 
+  const getCastings = () => castings;
+  
+  const updateCasting = (updatedCasting: Casting) => {
+    setCastings(castings.map(casting => 
+      casting.id === updatedCasting.id ? updatedCasting : casting
+    ));
+  };
+
+  const associateProjectWithCasting = (castingId: string, projectId: string) => {
+    setCastings(castings.map(casting => {
+      if (casting.id === castingId) {
+        const associatedProjectIds = casting.associatedProjectIds || [];
+        if (!associatedProjectIds.includes(projectId)) {
+          return {
+            ...casting,
+            associatedProjectIds: [...associatedProjectIds, projectId]
+          };
+        }
+      }
+      return casting;
+    }));
+  };
+
+  const removeProjectFromCasting = (castingId: string, projectId: string) => {
+    setCastings(castings.map(casting => {
+      if (casting.id === castingId && casting.associatedProjectIds) {
+        return {
+          ...casting,
+          associatedProjectIds: casting.associatedProjectIds.filter(id => id !== projectId)
+        };
+      }
+      return casting;
+    }));
+  };
+
   return (
     <SalesContext.Provider value={{
       plans,
       promotions,
       videos,
       sales,
+      castings,
       addPlan,
       updatePlan,
       deletePlan,
@@ -171,7 +282,12 @@ export const SalesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       deleteVideo,
       addSale,
       updateSale,
-      deleteSale
+      deleteSale,
+      addTelegramSale,
+      getCastings,
+      updateCasting,
+      associateProjectWithCasting,
+      removeProjectFromCasting
     }}>
       {children}
     </SalesContext.Provider>

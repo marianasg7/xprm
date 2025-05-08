@@ -1,4 +1,3 @@
-
 export type Tag = {
   id: string;
   name: string;
@@ -54,6 +53,7 @@ export interface Casting {
   postingDate: Date;
   selectedSubscribers: string[]; // IDs of selected subscribers
   createdAt: Date;
+  associatedProjectIds?: string[]; // Add this to link projects to castings
 }
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
@@ -100,10 +100,12 @@ export interface Sale {
   subscriberId: string;
   saleDate: Date;
   price: number;
+  quantity: number; // Add quantity field
   paymentStatus: PaymentStatus;
   deliveryStatus: DeliveryStatus;
   sentDate?: Date;
   createdAt: Date;
+  source?: 'telegram' | 'manual'; // Add source field to track where the sale came from
 }
 
 export interface Project {

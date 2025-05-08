@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Card, CardContent, CardHeader, CardTitle, CardDescription 
 } from "@/components/ui/card";
@@ -28,10 +28,16 @@ import { useSales } from "@/context/SalesContext";
 import { Video, Sale, PaymentStatus, DeliveryStatus } from "@/types/types";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { useSubscribers } from "@/context/SubscriberContext";
-import { PlusCircle, Edit, Trash2, DollarSign, Check, Video as VideoIcon, Tags, Send, X, Upload, Eye } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Check, Video as VideoIcon, Tags, Send, X, Upload, Eye, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 const Sales: React.FC = () => {
   const { toast } = useToast();
@@ -53,6 +59,7 @@ const Sales: React.FC = () => {
     subscriberId: "",
     saleDate: new Date(),
     price: 0,
+    quantity: 1,
     paymentStatus: "pending" as PaymentStatus,
     deliveryStatus: "pending" as DeliveryStatus
   });
@@ -69,12 +76,22 @@ const Sales: React.FC = () => {
   const [sendingSale, setSendingSale] = useState<Sale | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("all");
+  const [telegramSales, setTelegramSales] = useState<Sale[]>([]);
+  const [manualSales, setManualSales] = useState<Sale[]>([]);
 
   // Calculate some statistics
-  const totalSales = sales.reduce((sum, sale) => sum + sale.price, 0);
-  const paidSales = sales.filter(s => s.paymentStatus === "paid").reduce((sum, sale) => sum + sale.price, 0);
-  const pendingSales = sales.filter(s => s.paymentStatus === "pending").reduce((sum, sale) => sum + sale.price, 0);
+  const totalSales = sales.reduce((sum, sale) => sum + (sale.price * (sale.quantity || 1)), 0);
+  const paidSales = sales.filter(s => s.paymentStatus === "paid").reduce((sum, sale) => sum + (sale.price * (sale.quantity || 1)), 0);
+  const pendingSales = sales.filter(s => s.paymentStatus === "pending").reduce((sum, sale) => sum + (sale.price * (sale.quantity || 1)), 0);
+  const totalQuantity = sales.reduce((sum, sale) => sum + (sale.quantity || 1), 0);
   
+  // Filter sales by source when tab changes
+  useEffect(() => {
+    setTelegramSales(sales.filter(sale => sale.source === 'telegram'));
+    setManualSales(sales.filter(sale => sale.source !== 'telegram'));
+  }, [sales]);
+
   const handleAddVideo = () => {
     if (editingVideo) {
       updateVideo({
@@ -120,6 +137,7 @@ const Sales: React.FC = () => {
         subscriberId: "",
         saleDate: new Date(),
         price: 0,
+        quantity: 1,
         paymentStatus: "pending",
         deliveryStatus: "pending"
       });
@@ -220,7 +238,7 @@ const Sales: React.FC = () => {
         },
         mode: "no-cors",
         body: JSON.stringify({
-          message: `Video: ${video?.title}\nSent to: ${subscriber?.name}\nPrice: $${sendingSale.price}\nStatus: ${sendingSale.paymentStatus}`,
+          message: `Video: ${video?.title}\nSent to: ${subscriber?.name}\nQuantity: ${sendingSale.quantity || 1}\nPrice: $${sendingSale.price * (sendingSale.quantity || 1)}\nStatus: ${sendingSale.paymentStatus}`,
           timestamp: new Date().toISOString(),
         }),
       });
@@ -279,6 +297,106 @@ const Sales: React.FC = () => {
     return sale.paymentStatus === "paid" && sale.sentDate && sale.deliveryStatus !== "delivered";
   };
 
+  // Render sales table based on filtered data
+  const renderSalesTable = (salesToShow: Sale[]) => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Video</TableHead>
+          <TableHead>Subscriber</TableHead>
+          <TableHead>Date</TableHead>
+          <TableHead>Quantity</TableHead>
+          <TableHead>Price</TableHead>
+          <TableHead>Payment</TableHead>
+          <TableHead>Delivery</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {salesToShow.map((sale) => (
+          <TableRow key={sale.id}>
+            <TableCell>{getVideoTitle(sale.videoId)}</TableCell>
+            <TableCell>{getSubscriberName(sale.subscriberId)}</TableCell>
+            <TableCell>{formatDate(sale.saleDate)}</TableCell>
+            <TableCell>{sale.quantity || 1}</TableCell>
+            <TableCell>${(sale.price * (sale.quantity || 1)).toFixed(2)}</TableCell>
+            <TableCell>
+              <div className="flex items-center space-x-2">
+                <Badge 
+                  className={
+                    sale.paymentStatus === "paid" ? "bg-green-500 hover:bg-green-600" :
+                    sale.paymentStatus === "pending" ? "bg-yellow-500 hover:bg-yellow-600" :
+                    "bg-red-500 hover:bg-red-600"
+                  }
+                >
+                  {sale.paymentStatus}
+                </Badge>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-6 w-6 p-0"
+                  disabled={sale.paymentStatus === "paid"}
+                  onClick={() => handleUpdatePaymentStatus(sale, "paid")}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center space-x-2">
+                <Badge 
+                  className={
+                    sale.deliveryStatus === "delivered" ? "bg-green-500 hover:bg-green-600" :
+                    sale.deliveryStatus === "pending" ? "bg-yellow-500 hover:bg-yellow-600" :
+                    "bg-red-500 hover:bg-red-600"
+                  }
+                >
+                  {sale.deliveryStatus}
+                </Badge>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-6 w-6 p-0"
+                  disabled={!canBeDelivered(sale)}
+                  onClick={() => handleUpdateDeliveryStatus(sale, "delivered")}
+                  title={!canBeDelivered(sale) ? "Must send to Telegram before marking as delivered" : "Mark as delivered"}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+            <TableCell className="text-right">
+              <div className="flex justify-end gap-1">
+                <Button 
+                  size="sm" 
+                  variant={sale.sentDate ? "outline" : "ghost"}
+                  className={sale.sentDate ? "border-green-500 text-green-500" : ""}
+                  onClick={() => openTelegramDialog(sale)}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleEditSale(sale)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => deleteSale(sale.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+        
+        {salesToShow.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={8} className="text-center py-6">
+              No sales recorded yet. {activeTab === 'telegram' ? 'Telegram sales will appear here.' : 'Record a sale to get started.'}
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -289,7 +407,7 @@ const Sales: React.FC = () => {
       </div>
 
       {/* Sales Statistics */}
-      <div className="grid gap-4 md:grid-cols-3 mb-6">
+      <div className="grid gap-4 md:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
@@ -312,6 +430,14 @@ const Sales: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${pendingSales.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Quantity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalQuantity}</div>
           </CardContent>
         </Card>
       </div>
@@ -507,6 +633,7 @@ const Sales: React.FC = () => {
                 subscriberId: subscribers.length > 0 ? subscribers[0].id : "",
                 saleDate: new Date(),
                 price: 0,
+                quantity: 1,
                 paymentStatus: "pending",
                 deliveryStatus: "pending"
               });
@@ -558,6 +685,22 @@ const Sales: React.FC = () => {
                     <option key={subscriber.id} value={subscriber.id}>{subscriber.name}</option>
                   ))}
                 </select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="sale-quantity" className="col-span-1">Quantity</Label>
+                <Input
+                  id="sale-quantity"
+                  className="col-span-3"
+                  type="number"
+                  min="1"
+                  value={editingSale ? (editingSale.quantity || 1) : (newSale.quantity || 1)}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    editingSale
+                      ? setEditingSale({...editingSale, quantity: value})
+                      : setNewSale({...newSale, quantity: value});
+                  }}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="sale-date" className="col-span-1">Sale Date</Label>
@@ -624,104 +767,40 @@ const Sales: React.FC = () => {
         </Dialog>
       </div>
 
-      <Card>
-        <CardContent className="p-0 overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Video</TableHead>
-                <TableHead>Subscriber</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead>Delivery</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sales.map((sale) => (
-                <TableRow key={sale.id}>
-                  <TableCell>{getVideoTitle(sale.videoId)}</TableCell>
-                  <TableCell>{getSubscriberName(sale.subscriberId)}</TableCell>
-                  <TableCell>{formatDate(sale.saleDate)}</TableCell>
-                  <TableCell>${sale.price}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Badge 
-                        className={
-                          sale.paymentStatus === "paid" ? "bg-green-500 hover:bg-green-600" :
-                          sale.paymentStatus === "pending" ? "bg-yellow-500 hover:bg-yellow-600" :
-                          "bg-red-500 hover:bg-red-600"
-                        }
-                      >
-                        {sale.paymentStatus}
-                      </Badge>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-6 w-6 p-0"
-                        disabled={sale.paymentStatus === "paid"}
-                        onClick={() => handleUpdatePaymentStatus(sale, "paid")}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Badge 
-                        className={
-                          sale.deliveryStatus === "delivered" ? "bg-green-500 hover:bg-green-600" :
-                          sale.deliveryStatus === "pending" ? "bg-yellow-500 hover:bg-yellow-600" :
-                          "bg-red-500 hover:bg-red-600"
-                        }
-                      >
-                        {sale.deliveryStatus}
-                      </Badge>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-6 w-6 p-0"
-                        disabled={!canBeDelivered(sale)}
-                        onClick={() => handleUpdateDeliveryStatus(sale, "delivered")}
-                        title={!canBeDelivered(sale) ? "Must send to Telegram before marking as delivered" : "Mark as delivered"}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button 
-                        size="sm" 
-                        variant={sale.sentDate ? "outline" : "ghost"}
-                        className={sale.sentDate ? "border-green-500 text-green-500" : ""}
-                        onClick={() => openTelegramDialog(sale)}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleEditSale(sale)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => deleteSale(sale.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              
-              {sales.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6">
-                    No sales recorded yet. Record a sale to get started.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList>
+          <TabsTrigger value="all">All Sales</TabsTrigger>
+          <TabsTrigger value="telegram" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Telegram Sales
+            {telegramSales.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{telegramSales.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="manual">Manual Sales</TabsTrigger>
+        </TabsList>
+        <TabsContent value="all">
+          <Card>
+            <CardContent className="p-0 overflow-auto">
+              {renderSalesTable(sales)}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="telegram">
+          <Card>
+            <CardContent className="p-0 overflow-auto">
+              {renderSalesTable(telegramSales)}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="manual">
+          <Card>
+            <CardContent className="p-0 overflow-auto">
+              {renderSalesTable(manualSales)}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={telegramDialogOpen} onOpenChange={setTelegramDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
