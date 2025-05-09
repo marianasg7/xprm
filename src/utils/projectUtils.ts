@@ -11,9 +11,9 @@ export const getStatusBadge = (status: 'planned' | 'in-progress' | 'completed') 
     case 'planned':
       return "secondary";
     case 'in-progress':
-      return "warning";
+      return "secondary"; // Changed from "warning" to "secondary" for compatibility
     case 'completed':
-      return "success";
+      return "secondary"; // Changed from "success" to "secondary" for compatibility
     default:
       return "default";
   }
@@ -25,9 +25,9 @@ export const getStatusBadge = (status: 'planned' | 'in-progress' | 'completed') 
 export const getPaymentStatusBadge = (status: string) => {
   switch (status) {
     case 'paid':
-      return "success";
+      return "secondary"; // Changed from "success" to "secondary" for compatibility
     case 'pending':
-      return "secondary"; // Changed from "warning" to "secondary" for compatibility
+      return "secondary";
     case 'failed':
       return "destructive";
     case 'refunded':
@@ -43,9 +43,9 @@ export const getPaymentStatusBadge = (status: string) => {
 export const getDeliveryStatusBadge = (status: string) => {
   switch (status) {
     case 'delivered':
-      return "success";
+      return "secondary"; // Changed from "success" to "secondary" for compatibility
     case 'pending':
-      return "secondary"; // Changed from "warning" to "secondary" for compatibility
+      return "secondary";
     case 'failed':
       return "destructive";
     default:

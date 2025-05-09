@@ -86,6 +86,12 @@ const Sales: React.FC = () => {
     setVideoDialogOpen(false);
   };
 
+  // Add the missing handleEditVideo function
+  const handleEditVideo = (video: Video) => {
+    setEditingVideo(video);
+    setVideoDialogOpen(true);
+  };
+
   const handleAddSale = () => {
     // Set the price from the selected video
     const selectedVideo = videos.find(v => v.id === (editingSale ? editingSale.videoId : newSale.videoId));
