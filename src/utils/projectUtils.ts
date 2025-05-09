@@ -27,7 +27,7 @@ export const getPaymentStatusBadge = (status: string) => {
     case 'paid':
       return "success";
     case 'pending':
-      return "warning";
+      return "secondary"; // Changed from "warning" to "secondary" for compatibility
     case 'failed':
       return "destructive";
     case 'refunded':
@@ -45,11 +45,10 @@ export const getDeliveryStatusBadge = (status: string) => {
     case 'delivered':
       return "success";
     case 'pending':
-      return "warning";
+      return "secondary"; // Changed from "warning" to "secondary" for compatibility
     case 'failed':
       return "destructive";
     default:
       return "default";
   }
 };
-

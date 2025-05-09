@@ -68,6 +68,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { getStatusBadge } from "@/utils/projectUtils";
 
 // Define the form schema for project creation/editing
 const projectSchema = z.object({
@@ -628,7 +629,9 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             </CardDescription>
           </div>
           <div className="flex">
-            {getStatusBadge(project.status)}
+            <Badge variant={getStatusBadge(project.status)}>
+              {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+            </Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">

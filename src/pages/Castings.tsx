@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSubscribers } from '@/context/SubscriberContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,20 +6,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Casting, Subscriber } from '@/types/types';
+import { Casting, Subscriber, Project } from '@/types/types';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Cast } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarIcon, Cast, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function CastingsPage() {
   const { castings, subscribers, addCasting, updateCasting, deleteCasting, addSubscriberToCasting, removeSubscriberFromCasting } = useSubscribers();
+  const { toast } = useToast();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isParticipantsDialogOpen, setIsParticipantsDialogOpen] = useState(false);
   const [currentCasting, setCurrentCasting] = useState<Casting | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   
   const [formData, setFormData] = useState({
     theme: '',
@@ -29,9 +34,18 @@ export default function CastingsPage() {
     closingDate: new Date(),
     recordingDate: new Date(),
     postingDate: new Date(),
-    selectedSubscribers: [] as string[]
+    selectedSubscribers: [] as string[],
+    projectId: '' // Add projectId to formData
   });
   
+  // Load projects from local storage on component mount
+  useEffect(() => {
+    const storedProjects = localStorage.getItem('projects');
+    if (storedProjects) {
+      setProjects(JSON.parse(storedProjects));
+    }
+  }, []);
+
   // Filter subscribers who are interested in casting and active
   const eligibleSubscribers = subscribers.filter(sub => 
     sub.status === 'active' && sub.interestedInCasting
@@ -46,6 +60,16 @@ export default function CastingsPage() {
   };
   
   const handleAddCasting = () => {
+    // Check if a project is selected
+    if (!selectedProjectId) {
+      toast({
+        title: "Project Required",
+        description: "You must select a project for this casting.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Make sure all required fields are present
     addCasting({
       theme: formData.theme,
@@ -54,8 +78,23 @@ export default function CastingsPage() {
       closingDate: formData.closingDate,
       recordingDate: formData.recordingDate,
       postingDate: formData.postingDate,
-      selectedSubscribers: []
+      selectedSubscribers: [],
+      associatedProjectIds: [selectedProjectId]
     });
+    
+    // Update the project with the casting association
+    const updatedProjects = projects.map(project => {
+      if (project.id === selectedProjectId) {
+        return {
+          ...project,
+          castingId: crypto.randomUUID() // This would normally be the actual casting ID
+        };
+      }
+      return project;
+    });
+    
+    setProjects(updatedProjects);
+    localStorage.setItem('projects', JSON.stringify(updatedProjects));
     
     setFormData({
       theme: '',
@@ -64,23 +103,71 @@ export default function CastingsPage() {
       closingDate: new Date(),
       recordingDate: new Date(),
       postingDate: new Date(),
-      selectedSubscribers: []
+      selectedSubscribers: [],
+      projectId: ''
     });
+    setSelectedProjectId("");
     setIsAddDialogOpen(false);
+    
+    toast({
+      title: "Casting Created",
+      description: "The casting has been successfully created with the selected project."
+    });
   };
   
   const handleEditCasting = () => {
     if (currentCasting) {
+      // Check if a project is selected
+      if (!selectedProjectId) {
+        toast({
+          title: "Project Required",
+          description: "You must select a project for this casting.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Get existing associated projects
+      const existingProjectIds = currentCasting.associatedProjectIds || [];
+      const newProjectIds = [...existingProjectIds];
+      
+      // Add new project if not already associated
+      if (!newProjectIds.includes(selectedProjectId)) {
+        newProjectIds.push(selectedProjectId);
+      }
+      
       updateCasting(currentCasting.id, {
         theme: formData.theme,
         numberOfPeople: formData.numberOfPeople,
         openingDate: formData.openingDate,
         closingDate: formData.closingDate,
         recordingDate: formData.recordingDate,
-        postingDate: formData.postingDate
+        postingDate: formData.postingDate,
+        associatedProjectIds: newProjectIds
       });
+      
+      // Update the project with the casting association
+      const updatedProjects = projects.map(project => {
+        if (project.id === selectedProjectId) {
+          return {
+            ...project,
+            castingId: currentCasting.id
+          };
+        }
+        return project;
+      });
+      
+      setProjects(updatedProjects);
+      localStorage.setItem('projects', JSON.stringify(updatedProjects));
+      
       setCurrentCasting(null);
+      setSelectedProjectId("");
       setIsEditDialogOpen(false);
+      
+      toast({
+        title: "Casting Updated",
+        description: "The casting has been successfully updated with the selected project."
+      });
     }
   };
   
@@ -93,8 +180,14 @@ export default function CastingsPage() {
       closingDate: casting.closingDate,
       recordingDate: casting.recordingDate,
       postingDate: casting.postingDate,
-      selectedSubscribers: casting.selectedSubscribers
+      selectedSubscribers: casting.selectedSubscribers,
+      projectId: casting.associatedProjectIds && casting.associatedProjectIds.length > 0 
+        ? casting.associatedProjectIds[0] 
+        : ''
     });
+    setSelectedProjectId(casting.associatedProjectIds && casting.associatedProjectIds.length > 0 
+      ? casting.associatedProjectIds[0] 
+      : "");
     setIsEditDialogOpen(true);
   };
   
@@ -122,15 +215,43 @@ export default function CastingsPage() {
       setCurrentCasting(updatedCasting);
     }
   };
+
+  // Get project name by ID
+  const getProjectName = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    return project ? project.title : "Unknown Project";
+  };
   
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Castings</h1>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
+        <Button onClick={() => {
+          if (projects.length === 0) {
+            toast({
+              title: "No Projects Available",
+              description: "You need to create at least one project before creating a casting.",
+              variant: "destructive"
+            });
+            return;
+          }
+          setIsAddDialogOpen(true);
+        }}>
           Add New Casting
         </Button>
       </div>
+      
+      {projects.length === 0 && (
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertDescription>
+            You must create at least one project before creating castings. 
+            <Button variant="link" className="p-0 h-auto" onClick={() => window.location.href = "/projects"}>
+              Go to Projects
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       
       {castings.length === 0 ? (
         <div className="text-center py-10">
@@ -140,7 +261,17 @@ export default function CastingsPage() {
             Start by creating a new casting opportunity.
           </p>
           <div className="mt-6">
-            <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Button onClick={() => {
+              if (projects.length === 0) {
+                toast({
+                  title: "No Projects Available",
+                  description: "You need to create at least one project before creating a casting.",
+                  variant: "destructive"
+                });
+                return;
+              }
+              setIsAddDialogOpen(true);
+            }}>
               Add New Casting
             </Button>
           </div>
@@ -176,6 +307,20 @@ export default function CastingsPage() {
                     <span className="text-muted-foreground">Posting:</span>
                     <span>{format(new Date(casting.postingDate), 'MMM d, yyyy')}</span>
                   </div>
+                  
+                  {/* Show associated projects */}
+                  {casting.associatedProjectIds && casting.associatedProjectIds.length > 0 && (
+                    <div className="mt-3 pt-3 border-t">
+                      <h4 className="font-medium mb-1">Associated Projects:</h4>
+                      <div className="space-y-1">
+                        {casting.associatedProjectIds.map(projectId => (
+                          <Badge key={projectId} variant="outline" className="mr-1">
+                            {getProjectName(projectId)}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
@@ -214,6 +359,35 @@ export default function CastingsPage() {
                 placeholder="Summer Beach Shoot"
               />
             </div>
+            
+            {/* Project Selection - REQUIRED */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="project" className="text-right">
+                Project
+              </Label>
+              <div className="col-span-3">
+                <Select 
+                  value={selectedProjectId} 
+                  onValueChange={setSelectedProjectId}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a project (required)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-red-500 mt-1">
+                  {!selectedProjectId && "A project is required for creating a casting"}
+                </p>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="numberOfPeople" className="text-right">
                 People
@@ -345,12 +519,17 @@ export default function CastingsPage() {
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddCasting}>Create Casting</Button>
+            <Button 
+              onClick={handleAddCasting} 
+              disabled={!selectedProjectId}
+            >
+              Create Casting
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       
-      {/* Edit Casting Dialog */}
+      {/* Edit Casting Dialog - Now with project selection */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
@@ -372,6 +551,35 @@ export default function CastingsPage() {
                 className="col-span-3"
               />
             </div>
+            
+            {/* Project Selection - REQUIRED */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-project" className="text-right">
+                Project
+              </Label>
+              <div className="col-span-3">
+                <Select 
+                  value={selectedProjectId} 
+                  onValueChange={setSelectedProjectId}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a project (required)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-red-500 mt-1">
+                  {!selectedProjectId && "A project is required for this casting"}
+                </p>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-numberOfPeople" className="text-right">
                 People
@@ -387,7 +595,7 @@ export default function CastingsPage() {
               />
             </div>
             
-            {/* Same date pickers as the Add dialog */}
+            {/* Opening Date */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-openingDate" className="text-right">
                 Opening
@@ -415,7 +623,6 @@ export default function CastingsPage() {
               </div>
             </div>
             
-            {/* Similar date pickers for other dates */}
             {/* Closing Date */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">Closing</Label>
@@ -511,12 +718,17 @@ export default function CastingsPage() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleEditCasting}>Save Changes</Button>
+            <Button 
+              onClick={handleEditCasting}
+              disabled={!selectedProjectId}
+            >
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       
-      {/* Participants Dialog */}
+      {/* Participants Dialog (Keep as is) */}
       <Dialog 
         open={isParticipantsDialogOpen} 
         onOpenChange={setIsParticipantsDialogOpen}
